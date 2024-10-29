@@ -1,6 +1,10 @@
+#![feature(test)]
+extern crate test;
+
 mod small_board;
 
 use std::fmt;
+use rand::seq::SliceRandom;
 
 use small_board::Board as SmallBoard;
 use small_board::{Player, Position3};
@@ -29,20 +33,27 @@ impl Position {
         }
         true
     }
-}
 
-// TODO: Refactor to be method in Position
-pub struct SubPositions {
-    large_pos: Position3,
-    small_pos: Position3,
-}
+    pub fn large_pos(&self) -> Position3 {
+        Position3::new(self.x / 3, self.y / 3)
+    }
 
-impl SubPositions {
-    pub fn from_position(position: &Position) -> Self {
+    pub fn small_pos(&self) -> Position3 {
+        Position3::new(self.x % 3, self.y % 3)
+    }
+
+    fn from_subpos(large_pos: Position3, small_pos: Position3) -> Self {
         Self {
-            large_pos: Position3::new(position.x / 3, position.y / 3),
-            small_pos: Position3::new(position.x % 3, position.y % 3),
+            x: small_pos.x + 3 * large_pos.x,
+            y: small_pos.y + 3 * large_pos.y,
         }
+    }
+}
+
+impl fmt::Display for Position {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(f, "[{}, {}]", self.x, self.y)?;
+        Ok(())
     }
 }
 
@@ -54,24 +65,17 @@ pub struct MainBoard {
 
 impl MainBoard {
     pub fn get_cell(&self, position: &Position) -> Option<Player> {
-        let sub_pos = SubPositions::from_position(position);
-        self.small_boards[sub_pos.large_pos.flat() as usize].get_cell(&sub_pos.small_pos)
+        self.small_boards[position.large_pos().flat() as usize].get_cell(&position.small_pos())
     }
 
     pub fn set_cell(&mut self, position: &Position, player: Player) {
-        let sub_pos = SubPositions::from_position(position);
-        let small_board = &mut self.small_boards[sub_pos.large_pos.flat() as usize];
-        small_board.set_cell(&sub_pos.small_pos, player);
+        let small_board = &mut self.small_boards[position.large_pos().flat() as usize];
+        small_board.set_cell(&position.small_pos(), player);
         match small_board.winner() {
-            Some(winner) => self.board.set_cell(&sub_pos.large_pos, winner),
+            Some(winner) => self.board.set_cell(&position.large_pos(), winner),
             None => (),
         };
         self.last_move = Some(position.clone());
-    }
-
-    fn small_board_from_position(&self, position: &Position) -> &SmallBoard {
-        let sub_pos = SubPositions::from_position(position);
-        &self.small_boards[sub_pos.large_pos.flat() as usize]
     }
 
     pub fn winner(&self) -> Option<Player> {
@@ -79,28 +83,51 @@ impl MainBoard {
     }
 
     pub fn is_valid_move(&self, position: &Position) -> bool {
-        let sub_pos = SubPositions::from_position(position);
         // If not first move
+        let target_small_board= &self.small_boards[position.large_pos().flat() as usize];
         match &self.last_move {
             Some(last_move) => {
-                if sub_pos.large_pos != SubPositions::from_position(last_move).small_pos
-                    && !self.small_boards[sub_pos.large_pos.flat() as usize].is_full() { return false }
+                if position.large_pos() != last_move.small_pos()
+                    && !target_small_board.is_full() { return false }
             },
             None => (),
         }
         // Check for empty
-        self.small_boards[sub_pos.large_pos.flat() as usize]
-            .get_cell(&sub_pos.small_pos)
+        target_small_board
+            .get_cell(&position.small_pos())
             .is_none()
+    }
+
+    fn empty_cells(&self) -> Vec<Position> {
+        let mut empty_cells = Vec::new();
+        for x in 0..9 {
+            for y in 0..9 {
+                let pos = Position::new(x, y);
+                if self.get_cell(&pos).is_none() {
+                    empty_cells.push(pos)
+                }
+            }
+        }
+        empty_cells
     }
 
     pub fn valid_moves(&self) -> Vec<Position> {
         match &self.last_move {
+            None => {return self.empty_cells();},
             Some(last_move) => {
-                if !self.small_boards[last_move.flat() as usize].is_full() { return false }
+                let target_small_board= &self.small_boards[last_move.small_pos().flat() as usize];
+                if target_small_board.is_full() {
+                    return self.empty_cells();
+                } else {
+                    let mut cells = Vec::new();
+                    for p_small in target_small_board.empty_cells() {
+                        cells.push(Position::from_subpos(last_move.small_pos(), p_small))
+                    }
+                    cells
+                }
             },
-            None => (),
         }
+
     }
 }
 
@@ -133,11 +160,52 @@ impl Default for MainBoard {
     }
 }
 
+pub fn play_random_game() -> Option<Player> {
+    let mut board = MainBoard::default();
+    let mut rng = rand::thread_rng();
+    let mut player = Player::X;
+
+    loop {
+        match board.valid_moves().choose(&mut rng) {
+            Some(mv) => board.set_cell(mv, player),
+            None => break None,
+        }
+        // println!("{board}");
+        match board.winner() {
+            Some(winner) => {println!("Player {winner} wins!"); break Some(winner);},
+            None => (),
+        }
+        player = player.other_player();
+    }
+}
 
 fn main() {
     let mut board = MainBoard::default();
-    println!("{}", board);
-    board.set_cell(&Position::new(5, 2), Player::X);
-    println!("{}", board);
-    board.set_cell(&Position::new(5, 2), Player::X);
+    let mut rng = rand::thread_rng();
+    let mut player = Player::X;
+
+    loop {
+        match board.valid_moves().choose(&mut rng) {
+            Some(mv) => board.set_cell(mv, player),
+            None => break,
+        }
+        // println!("{board}");
+        match board.winner() {
+            Some(winner) => {println!("Player {winner} wins!"); break;},
+            None => (),
+        }
+        player = player.other_player();
+    }
+}
+
+#[cfg(test)]
+mod benchmarks {
+    use test::Bencher;
+
+    use super::play_random_game;
+
+    #[bench]
+    fn bench_play_game(b: &mut Bencher) {
+        b.iter(|| play_random_game());
+    }
 }
