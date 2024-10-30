@@ -43,7 +43,6 @@ impl Game {
         };
 
         if !self.board.is_valid_move(position) {
-            println!("is invalid");
             return Err(GameError::InvalidMove { position: position.clone() });
         }
 
