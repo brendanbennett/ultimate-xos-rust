@@ -1,208 +1,115 @@
 #![feature(test)]
 extern crate test;
 
+mod board;
 mod small_board;
 
-use std::fmt;
 use rand::seq::SliceRandom;
+use rand::prelude::*;
+use board::{MainBoard, Position};
+use small_board::Player;
+use itertools::Itertools;
 
-use small_board::Board as SmallBoard;
-use small_board::{Player, Position3};
-
-#[derive(PartialEq, Clone)]
-pub struct Position {
-    x: u8,
-    y: u8,
+#[derive(Clone)]
+enum GameStatus {
+    InProgress {player: Player},
+    Won {player: Player},
+    Draw,
 }
 
-impl Position {
-    pub fn new(x: u8, y: u8) -> Self {
-        Self {x: x, y: y}
+impl Default for GameStatus {
+    fn default() -> Self {
+        Self::InProgress { player: Player::X }
     }
+}
 
-    pub fn from_vec(vec: Vec<u32>) -> Result<Self, String> {
-        if vec.len() != 2 {
-            return Err("Incorrect number of coordinates".to_string())
-        }
-        Ok(Self {x: vec[0] as u8, y: vec[1] as u8})
-    }
+#[derive(Debug)]
+enum GameError {
+    InvalidMove { position: Position },
+    GameOver,
+}
 
-    pub fn is_valid(&self) -> bool {
-        if self.x > 8 || self.y > 8 {
-            return false;
-        }
-        true
-    }
+struct Game {
+    board: MainBoard,
+    status: GameStatus,
+}
 
-    pub fn large_pos(&self) -> Position3 {
-        Position3::new(self.x / 3, self.y / 3)
-    }
-
-    pub fn small_pos(&self) -> Position3 {
-        Position3::new(self.x % 3, self.y % 3)
-    }
-
-    fn from_subpos(large_pos: Position3, small_pos: Position3) -> Self {
+impl Default for Game {
+    fn default() -> Self {
         Self {
-            x: small_pos.x + 3 * large_pos.x,
-            y: small_pos.y + 3 * large_pos.y,
+            board: MainBoard::default(),
+            status: GameStatus::default(),
         }
     }
 }
 
-impl fmt::Display for Position {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "[{}, {}]", self.x, self.y)?;
-        Ok(())
-    }
-}
-
-pub struct MainBoard {
-    small_boards: Vec<SmallBoard>,
-    board: SmallBoard,
-    last_move: Option<Position>,
-}
-
-impl MainBoard {
-    pub fn get_cell(&self, position: &Position) -> Option<Player> {
-        self.small_boards[position.large_pos().flat() as usize].get_cell(&position.small_pos())
-    }
-
-    pub fn set_cell(&mut self, position: &Position, player: Player) {
-        let small_board = &mut self.small_boards[position.large_pos().flat() as usize];
-        small_board.set_cell(&position.small_pos(), player);
-        match small_board.winner() {
-            Some(winner) => self.board.set_cell(&position.large_pos(), winner),
-            None => (),
+impl Game {
+    pub fn take_turn(&mut self, position: &Position) -> Result<GameStatus, GameError> {
+        let current_player = match self.status {
+            GameStatus::InProgress {player} => player,
+            _ => return Err(GameError::GameOver),
         };
-        self.last_move = Some(position.clone());
-    }
 
-    pub fn winner(&self) -> Option<Player> {
-        self.board.winner()
-    }
-
-    pub fn is_valid_move(&self, position: &Position) -> bool {
-        // If not first move
-        let target_small_board= &self.small_boards[position.large_pos().flat() as usize];
-        match &self.last_move {
-            Some(last_move) => {
-                if position.large_pos() != last_move.small_pos()
-                    && !target_small_board.is_full() { return false }
-            },
-            None => (),
+        if !self.board.is_valid_move(position) {
+            println!("is invalid");
+            return Err(GameError::InvalidMove { position: position.clone() });
         }
-        // Check for empty
-        target_small_board
-            .get_cell(&position.small_pos())
-            .is_none()
-    }
 
-    fn empty_cells(&self) -> Vec<Position> {
-        let mut empty_cells = Vec::new();
-        for x in 0..9 {
-            for y in 0..9 {
-                let pos = Position::new(x, y);
-                if self.get_cell(&pos).is_none() {
-                    empty_cells.push(pos)
-                }
-            }
-        }
-        empty_cells
+        self.board.set_cell(position, current_player);
+
+        self.status = if let Some(winner) = self.board.winner() {
+            GameStatus::Won {player: winner}
+        } else if self.board.is_draw() {
+            GameStatus::Draw
+        } else {
+            GameStatus::InProgress {player: current_player.other_player()}
+        };
+
+        Ok(self.status.clone())
     }
 
     pub fn valid_moves(&self) -> Vec<Position> {
-        match &self.last_move {
-            None => {return self.empty_cells();},
-            Some(last_move) => {
-                let target_small_board= &self.small_boards[last_move.small_pos().flat() as usize];
-                if target_small_board.is_full() {
-                    return self.empty_cells();
-                } else {
-                    let mut cells = Vec::new();
-                    for p_small in target_small_board.empty_cells() {
-                        cells.push(Position::from_subpos(last_move.small_pos(), p_small))
-                    }
-                    cells
-                }
-            },
-        }
+        self.board.valid_moves()
+    }
 
+    pub fn status(&self) -> &GameStatus {
+        &self.status
+    }
+
+    pub fn board(&self) -> &MainBoard {
+        &self.board
     }
 }
 
-impl fmt::Display for MainBoard {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for y in 0..9 {
-            for x in 0..9 {
-                let cell = self.get_cell(&Position::new(x as u8, y as u8));
-                write!(f, " {} ", cell.map_or(" ".to_string(), |p| p.to_string()))?;
-                if x < 8 {
-                    write!(f, "|")?;
-                }
-            }
-            if y < 8 {
-                write!(f, "\n{}", "-".repeat(35))?
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
-
-impl Default for MainBoard {
-    fn default() -> Self {
-        Self {
-            small_boards: vec![SmallBoard::default(); 9],
-            board: SmallBoard::default(),
-            last_move: None,
-        }
-    }
-}
-
-pub fn play_random_game() -> Option<Player> {
-    let mut board = MainBoard::default();
-    let mut rng = rand::thread_rng();
-    let mut player = Player::X;
-
-    loop {
-        match board.valid_moves().choose(&mut rng) {
-            Some(mv) => board.set_cell(mv, player),
-            None => break None,
-        }
-        // println!("{board}");
-        match board.winner() {
-            Some(winner) => {println!("Player {winner} wins!"); break Some(winner);},
-            None => (),
-        }
-        player = player.other_player();
-    }
-}
 
 fn main() {
-    let mut board = MainBoard::default();
-    let mut rng = rand::thread_rng();
-    let mut player = Player::X;
+    let mut outcomes: Vec<String> = Vec::new();
 
-    loop {
-        match board.valid_moves().choose(&mut rng) {
-            Some(mv) => board.set_cell(mv, player),
-            None => break,
-        }
-        // println!("{board}");
-        match board.winner() {
-            Some(winner) => {println!("Player {winner} wins!"); break;},
-            None => (),
-        }
-        player = player.other_player();
+    for _ in 0..10000 {
+        let mut game = Game::default();
+        let mut rng = SmallRng::from_entropy();
+
+        outcomes.push(loop {
+            let mv = game.valid_moves().choose(&mut rng).expect("No valid moves but game not drawn (!?)").clone();
+            let status = game.take_turn(&mv).unwrap();
+
+            // println!("{}\n", game.board());
+            match status {
+                GameStatus::Won { player: winner } => {break winner.to_string();},
+                GameStatus::Draw => {break "Draw".to_string();},
+                GameStatus::InProgress { player: _ } => (),
+            }
+        })
     }
+
+    let outcome_counts= outcomes.into_iter().counts();
+    println!("X: {}, O: {}, Draw: {}", outcome_counts["X"], outcome_counts["O"], outcome_counts["Draw"]);
 }
 
 #[cfg(test)]
 mod benchmarks {
+    use crate::board::play_random_game;
     use test::Bencher;
-
-    use super::play_random_game;
 
     #[bench]
     fn bench_play_game(b: &mut Bencher) {

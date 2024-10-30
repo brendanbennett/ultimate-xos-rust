@@ -85,15 +85,18 @@ impl Board {
         self.count_player(Player::X) + self.count_player(Player::O) == 9
     }
 
-    pub fn empty_cells(&self) -> Vec<Position3> {
+    pub fn valid_moves(&self) -> Vec<Position3> {
         let valid_bits = !(self.bitboards[0] | self.bitboards[1]);
-        let mut empty_cells: Vec<Position3> = Vec::new();
+        let mut valid_moves: Vec<Position3> = Vec::new();
+        if self.winner().is_some() {
+            return valid_moves
+        }
         for i in 0..9 {
             if 1 & (valid_bits >> i) == 1 {
-                empty_cells.push(Position3::new(i % 3, i / 3))
+                valid_moves.push(Position3::new(i % 3, i / 3))
             }
         }
-        empty_cells
+        valid_moves
     }
 }
 
@@ -122,7 +125,7 @@ impl fmt::Display for Board {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Position3 {
     pub x: u8,
     pub y: u8,
@@ -152,6 +155,13 @@ impl Position3 {
 
     pub fn flat(&self) -> u8 {
         self.x + 3 * self.y
+    }
+
+    pub fn from_flat(flat_repr: u8) -> Self {
+        Self {
+            x: flat_repr % 3,
+            y: flat_repr / 3,
+        }
     }
 }
 
@@ -258,8 +268,8 @@ mod tests {
         b.set_cell(&Position3::new(2, 0), Player::O);
         b.set_cell(&Position3::new(1, 1), Player::O);
         b.set_cell(&Position3::new(0, 2), Player::O);
-        assert!(b.empty_cells().contains(&Position3::new(0, 0)));
-        assert_eq!(b.empty_cells().len(), 3);
+        assert!(b.valid_moves().contains(&Position3::new(0, 0)));
+        assert_eq!(b.valid_moves().len(), 3);
     }
 
     #[test]
