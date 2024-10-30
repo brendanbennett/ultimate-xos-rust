@@ -1,4 +1,5 @@
 use std::fmt;
+use std::ops::{Deref, DerefMut};
 use rand::seq::SliceRandom;
 
 use crate::small_board::Board as SmallBoard;
@@ -41,6 +42,51 @@ impl Position {
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "[{}, {}]", self.x, self.y)?;
+        Ok(())
+    }
+}
+
+pub struct PositionList(Vec<Position>);
+
+impl Deref for PositionList {
+    type Target = Vec<Position>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for PositionList {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl fmt::Display for PositionList {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for y in 0..9 {
+            for x in 0..9 {
+                let pos = Position::new(x as u8, y as u8);
+                let cell = self.0.contains(&pos);
+
+                write!(f, " {} ", if cell {"*"} else {" "})?;
+                if x < 8 {
+                    if x % 3 == 2 {
+                        write!(f, "‖")?;
+                    } else {
+                        write!(f, "|")?;
+                    }
+                }
+            }
+            if y < 8 {
+                if y % 3 == 2 {
+                    write!(f, "\n{}", "=".repeat(35))?
+                } else {
+                    write!(f, "\n{}", "-".repeat(35))?
+                }
+            }
+            writeln!(f)?;
+        }
         Ok(())
     }
 }
@@ -94,19 +140,19 @@ impl MainBoard {
         self.get_cell(&position).is_none()
     }
 
-    fn available_cells(&self) -> Vec<Position> {
-        let mut empty_cells = Vec::new();
+    fn available_cells(&self) -> PositionList {
+        let mut available_cells = Vec::new();
         for i in 0..9 {
             let small_board_valid_moves = self.small_boards[i].valid_moves();
             let large_pos = Position3::from_flat(i as u8);
             for small_pos in small_board_valid_moves {
-                empty_cells.push(Position::from_subpos(large_pos.clone(), small_pos))
+                available_cells.push(Position::from_subpos(large_pos.clone(), small_pos))
             }
         }
-        empty_cells
+        PositionList(available_cells)
     }
 
-    pub fn valid_moves(&self) -> Vec<Position> {
+    pub fn valid_moves(&self) -> PositionList {
         match &self.last_move {
             None => {return self.available_cells();},
             Some(last_move) => {
@@ -118,7 +164,7 @@ impl MainBoard {
                     for p_small in target_small_board.valid_moves() {
                         cells.push(Position::from_subpos(last_move.small_pos(), p_small))
                     }
-                    cells
+                    PositionList(cells)
                 }
             },
         }
