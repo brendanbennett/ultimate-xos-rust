@@ -5,10 +5,20 @@ mod board;
 mod small_board;
 mod game;
 
+use board::Position;
 use rand::seq::SliceRandom;
 use rand::prelude::*;
 use itertools::Itertools;
 use game::{Game, GameStatus};
+use ego_tree::Tree;
+
+struct Node {
+    num_visits: u32,
+    prior_prob: f32,
+    action: Position,
+}
+
+type MCTSTree = Tree<Node>;
 
 
 fn main() {
