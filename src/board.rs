@@ -91,6 +91,7 @@ impl fmt::Display for PositionList {
     }
 }
 
+#[derive(Clone)]
 pub struct MainBoard {
     small_boards: Vec<SmallBoard>,
     board: SmallBoard,

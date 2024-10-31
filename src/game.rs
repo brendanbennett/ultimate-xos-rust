@@ -9,6 +9,16 @@ pub enum GameStatus {
     Draw,
 }
 
+impl Into<f32> for GameStatus {
+    fn into(self) -> f32 {
+        match self {
+            Self::InProgress { player: _ } => 0.0,
+            Self::Draw => 0.0,
+            Self::Won { player: _ } => 1.0,
+        }
+    }
+}
+
 impl Default for GameStatus {
     fn default() -> Self {
         Self::InProgress { player: Player::X }
@@ -21,6 +31,7 @@ pub enum GameError {
     GameOver,
 }
 
+#[derive(Clone)]
 pub struct Game {
     board: MainBoard,
     status: GameStatus,
