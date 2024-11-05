@@ -7,10 +7,10 @@ mod game;
 
 use core::fmt;
 
-use board::Position;
-use rand::seq::SliceRandom;
+use board::{Position, Player};
+
 use rand::prelude::*;
-use itertools::{izip, Itertools};
+use itertools::izip;
 use game::{Game, GameStatus};
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
 
@@ -22,7 +22,6 @@ struct GameNode {
     game_state: Game,
     node_state: GameNodeState,
     previous_action: Option<Position>, // Only None for root
-    num_children: u32
 }
 
 impl GameNode {
@@ -35,7 +34,6 @@ impl GameNode {
             game_state,
             node_state,
             previous_action,
-            num_children: 0,
         }
     }
 
@@ -79,20 +77,18 @@ impl MCTS {
             // Because can only win on your own move
             return status.clone().into()
         } else {
-            if leaf_node.value().num_children != 0 {panic!("leaf node already has children! (Probably already expanded)")};
+            if leaf_node.has_children() {panic!("leaf node already has children! (Probably already expanded)")};
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: false };
 
             let valid_moves = leaf_node.value().game_state.valid_moves();
 
             // Would be calculated from NN
             let prior_probs: Vec<f32> = vec![1. /valid_moves.len() as f32; valid_moves.len()];
-            let value: f32 = 0.0;
-
-            leaf_node.value().num_children += valid_moves.len() as u32;
+            let value: f32 = (random::<f32>()-0.5)*0.2;
 
             for (valid_move, prior_prob) in valid_moves.iter().zip(prior_probs.iter()) {
                 let mut child_state = leaf_node.value().game_state.clone();
-                let child_status = child_state.take_turn(&valid_move);
+                _ = child_state.take_turn(&valid_move);
                 // init node, evaluate children an take mean of values as action value
                 let child_node = GameNode::new(
                     *prior_prob, 
@@ -143,13 +139,25 @@ impl MCTS {
     }
 
     pub fn backup(&mut self, node_chain: Vec<NodeId>, value: f32) {
-        for node_id in node_chain {
+        let mut value = value;
+        for node_id in node_chain.into_iter().rev() {
             let mut node = self.tree.get_mut(node_id).expect("No node found");
             let game_node: &mut GameNode = node.value();
             game_node.num_visits += 1;
             game_node.total_value += value;
             game_node.update_action_value();
+            
+            value = value * -1.;
         }
+    }
+
+    pub fn select_best_child(&self) -> NodeId {
+        self.tree
+            .root()
+            .children()
+            .max_by(|x, y| x.value().num_visits.cmp(&y.value().num_visits))
+            .unwrap()
+            .id()
     }
 }
 
@@ -169,16 +177,52 @@ impl Default for MCTS {
     }
 }
 
+impl MCTS {
+    fn from_root_game_state(root_game_state: Game) -> Self {
+        Self {
+            tree: MCTSTree::new(
+                GameNode::new(
+                    0.0, 
+                    root_game_state,
+                    GameNodeState::NotExpanded,
+                    None,
+                )
+            ),
+            c_puct: 1.,
+        }
+    }
+}
+
 
 fn main() {
-    let mut mcts = MCTS::default();
-    println!("{}", mcts.tree);
-    for _ in 0..1000 {
-        let node_chain: Vec<NodeId> = mcts.select();
-        let value = mcts.expand(node_chain.last().copied().unwrap());
-        mcts.backup(node_chain, value);
+    let mut rng = rand::thread_rng();
+    let mut root_game = Game::default();
+    loop {
+        if matches!(root_game.status(), GameStatus::InProgress{player: Player::O}) {
+            _ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
+        }
+        let mut mcts = MCTS::from_root_game_state(root_game.clone());
+        // println!("{}", mcts.tree);
+        for _ in 0..1000 {
+            let node_chain: Vec<NodeId> = mcts.select();
+            let value = mcts.expand(node_chain.last().copied().unwrap());
+            mcts.backup(node_chain, value);
+        }
+        
+        for child in mcts.tree.root().children() {
+            // println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
+        }
+
+        let best_child_id = mcts.select_best_child();
+        let best_child: &GameNode = mcts.tree.get(best_child_id).unwrap().value();
+        println!("{}\n", best_child.game_state.board());
+        
+        root_game = best_child.game_state.clone();
+        if best_child.is_terminal() {
+            println!("Result: {:?}", best_child.game_state.status());
+            break;
+        }
     }
-    // mcts.tree.root().children()
 }
 
 #[cfg(test)]

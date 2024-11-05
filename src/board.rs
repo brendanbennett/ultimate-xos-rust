@@ -3,7 +3,8 @@ use std::ops::{Deref, DerefMut};
 use rand::seq::SliceRandom;
 
 use crate::small_board::Board as SmallBoard;
-use crate::small_board::{Player, Position3};
+use crate::small_board::Position3;
+pub use crate::small_board::Player;
 
 #[derive(PartialEq, Clone, Debug)]
 pub struct Position {

@@ -2,7 +2,7 @@ use crate::board::{MainBoard, Position, PositionList};
 use crate::small_board::Player;
 
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub enum GameStatus {
     InProgress {player: Player},
     Won {player: Player},
