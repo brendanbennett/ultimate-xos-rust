@@ -40,6 +40,21 @@ impl Position {
     }
 }
 
+impl From<usize> for Position {
+    fn from(index: usize) -> Self {
+        Self {
+            x: index % 9,
+            y: index / 9,
+        }
+    }
+}
+
+impl Into<usize> for Position {
+    fn into(self) -> usize {
+        self.x + 9 * self.y
+    }
+}
+
 impl fmt::Display for Position {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}]", self.x, self.y)?;
