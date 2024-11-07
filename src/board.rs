@@ -43,15 +43,15 @@ impl Position {
 impl From<usize> for Position {
     fn from(index: usize) -> Self {
         Self {
-            x: index % 9,
-            y: index / 9,
+            x: (index % 9) as u8,
+            y: (index / 9) as u8,
         }
     }
 }
 
-impl Into<usize> for Position {
-    fn into(self) -> usize {
-        self.x + 9 * self.y
+impl From<Position> for usize {
+    fn from(pos: Position) -> Self {
+        (pos.x + 9 * pos.y) as usize
     }
 }
 

@@ -7,7 +7,6 @@ mod policy;
 mod small_board;
 
 use core::fmt;
-use std::random::Random;
 
 use board::{Player, Position};
 
@@ -103,14 +102,14 @@ impl<A: Agent> MCTS<A> {
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: false };
 
             // Would be calculated from NN
-            let (policy, value)= self.agent.eval(leaf_node.value().game_state);
+            let (policy, value)= self.agent.eval(&leaf_node.value().game_state);
 
             for (valid_move, prior_prob) in policy {
                 let mut child_state = leaf_node.value().game_state.clone();
                 _ = child_state.take_turn(&valid_move);
                 // init node, evaluate children an take mean of values as action value
                 let child_node = GameNode::new(
-                    *prior_prob,
+                    prior_prob,
                     child_state.clone(),
                     GameNodeState::NotExpanded,
                     Some(valid_move.clone()),
@@ -181,25 +180,8 @@ impl<A: Agent> MCTS<A> {
             .unwrap()
             .id()
     }
-}
 
-impl Default for MCTS {
-    fn default() -> Self {
-        Self {
-            tree: MCTSTree::new(GameNode::new(
-                0.0,
-                Game::default(),
-                GameNodeState::NotExpanded,
-                None,
-            )),
-            c_puct: 1.,
-            agent: RandomAgent,
-        }
-    }
-}
-
-impl MCTS {
-    fn from_root_game_state(root_game_state: Game, agent: Agent) -> Self {
+    fn from_root_game_state(root_game_state: Game, agent: A) -> Self {
         Self {
             tree: MCTSTree::new(GameNode::new(
                 0.0,
@@ -213,6 +195,23 @@ impl MCTS {
     }
 }
 
+
+impl<A: Agent> Default for MCTS<A> {
+    fn default() -> Self {
+        Self {
+            tree: MCTSTree::new(GameNode::new(
+                0.0,
+                Game::default(),
+                GameNodeState::NotExpanded,
+                None,
+            )),
+            c_puct: 1.,
+            agent: A::new(),
+        }
+    }
+}
+
+
 fn main() {
     let mut rng = rand::thread_rng();
     let mut root_game = Game::default();
@@ -223,7 +222,7 @@ fn main() {
         ) {
             _ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
         }
-        let mut mcts = MCTS::from_root_game_state(root_game.clone(), RandomAgent);
+        let mut mcts = MCTS::<RandomAgent>::from_root_game_state(root_game.clone(), RandomAgent::new());
         // println!("{}", mcts.tree);
         for _ in 0..1000 {
             let node_chain: Vec<NodeId> = mcts.select();
