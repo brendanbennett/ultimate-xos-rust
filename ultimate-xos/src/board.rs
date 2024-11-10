@@ -1,34 +1,37 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
 use rand::seq::SliceRandom;
+use sigmazero::game::{Position, PositionList};
 
 use crate::small_board::Board as SmallBoard;
 use crate::small_board::Position3;
-pub use crate::small_board::Player;
+pub use crate::small_board::XOPlayer;
 
 #[derive(PartialEq, Clone, Debug)]
-pub struct Position {
+pub struct XOPosition {
     x: u8,
     y: u8,
 }
 
-impl Position {
-    pub fn new(x: u8, y: u8) -> Self {
+impl Position for XOPosition {
+    fn new(x: u8, y: u8) -> Self {
         Self {x: x, y: y}
     }
 
-    pub fn is_valid(&self) -> bool {
+    fn is_valid(&self) -> bool {
         if self.x > 8 || self.y > 8 {
             return false;
         }
         true
     }
+}
 
-    pub fn large_pos(&self) -> Position3 {
+impl XOPosition {
+    fn large_pos(&self) -> Position3 {
         Position3::new(self.x / 3, self.y / 3)
     }
 
-    pub fn small_pos(&self) -> Position3 {
+    fn small_pos(&self) -> Position3 {
         Position3::new(self.x % 3, self.y % 3)
     }
 
@@ -40,7 +43,7 @@ impl Position {
     }
 }
 
-impl From<usize> for Position {
+impl From<usize> for XOPosition {
     fn from(index: usize) -> Self {
         Self {
             x: (index % 9) as u8,
@@ -49,77 +52,63 @@ impl From<usize> for Position {
     }
 }
 
-impl From<Position> for usize {
-    fn from(pos: Position) -> Self {
+impl From<XOPosition> for usize {
+    fn from(pos: XOPosition) -> Self {
         (pos.x + 9 * pos.y) as usize
     }
 }
 
-impl fmt::Display for Position {
+impl fmt::Display for XOPosition {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "[{}, {}]", self.x, self.y)?;
         Ok(())
     }
 }
 
-pub struct PositionList(Vec<Position>);
+pub type XOPositionList = PositionList<XOPosition>;
 
-impl Deref for PositionList {
-    type Target = Vec<Position>;
+// impl fmt::Display for XOPositionList {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         for y in 0..9 {
+//             for x in 0..9 {
+//                 let pos = XOPosition::new(x as u8, y as u8);
+//                 let cell = self.contains(&pos);
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl DerefMut for PositionList {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl fmt::Display for PositionList {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for y in 0..9 {
-            for x in 0..9 {
-                let pos = Position::new(x as u8, y as u8);
-                let cell = self.0.contains(&pos);
-
-                write!(f, " {} ", if cell {"*"} else {" "})?;
-                if x < 8 {
-                    if x % 3 == 2 {
-                        write!(f, "‖")?;
-                    } else {
-                        write!(f, "|")?;
-                    }
-                }
-            }
-            if y < 8 {
-                if y % 3 == 2 {
-                    write!(f, "\n{}", "=".repeat(35))?
-                } else {
-                    write!(f, "\n{}", "-".repeat(35))?
-                }
-            }
-            writeln!(f)?;
-        }
-        Ok(())
-    }
-}
+//                 write!(f, " {} ", if cell {"*"} else {" "})?;
+//                 if x < 8 {
+//                     if x % 3 == 2 {
+//                         write!(f, "‖")?;
+//                     } else {
+//                         write!(f, "|")?;
+//                     }
+//                 }
+//             }
+//             if y < 8 {
+//                 if y % 3 == 2 {
+//                     write!(f, "\n{}", "=".repeat(35))?
+//                 } else {
+//                     write!(f, "\n{}", "-".repeat(35))?
+//                 }
+//             }
+//             writeln!(f)?;
+//         }
+//         Ok(())
+//     }
+// }
 
 #[derive(Clone)]
 pub struct MainBoard {
     small_boards: Vec<SmallBoard>,
     board: SmallBoard,
-    last_move: Option<Position>,
+    last_move: Option<XOPosition>,
 }
 
 impl MainBoard {
-    pub fn get_cell(&self, position: &Position) -> Option<Player> {
+    pub fn get_cell(&self, position: &XOPosition) -> Option<XOPlayer> {
         self.small_boards[position.large_pos().flat() as usize].get_cell(&position.small_pos())
     }
 
-    pub fn set_cell(&mut self, position: &Position, player: Player) {
+    pub fn set_cell(&mut self, position: &XOPosition, player: XOPlayer) {
         let small_board = &mut self.small_boards[position.large_pos().flat() as usize];
         small_board.set_cell(&position.small_pos(), player);
         match small_board.winner() {
@@ -129,11 +118,11 @@ impl MainBoard {
         self.last_move = Some(position.clone());
     }
 
-    pub fn winner(&self) -> Option<Player> {
+    pub fn winner(&self) -> Option<XOPlayer> {
         self.board.winner()
     }
 
-    pub fn is_valid_move(&self, position: &Position) -> bool {
+    pub fn is_valid_move(&self, position: &XOPosition) -> bool {
         if !position.is_valid() {
             return false
         }
@@ -157,19 +146,19 @@ impl MainBoard {
         self.get_cell(&position).is_none()
     }
 
-    fn available_cells(&self) -> PositionList {
+    fn available_cells(&self) -> XOPositionList {
         let mut available_cells = Vec::new();
         for i in 0..9 {
             let small_board_valid_moves = self.small_boards[i].valid_moves();
             let large_pos = Position3::from_flat(i as u8);
             for small_pos in small_board_valid_moves {
-                available_cells.push(Position::from_subpos(large_pos.clone(), small_pos))
+                available_cells.push(XOPosition::from_subpos(large_pos.clone(), small_pos))
             }
         }
-        PositionList(available_cells)
+        XOPositionList::new(available_cells)
     }
 
-    pub fn valid_moves(&self) -> PositionList {
+    pub fn valid_moves(&self) -> XOPositionList {
         match &self.last_move {
             None => {return self.available_cells();},
             Some(last_move) => {
@@ -179,9 +168,9 @@ impl MainBoard {
                 } else {
                     let mut cells = Vec::new();
                     for p_small in target_small_board.valid_moves() {
-                        cells.push(Position::from_subpos(last_move.small_pos(), p_small))
+                        cells.push(XOPosition::from_subpos(last_move.small_pos(), p_small))
                     }
-                    PositionList(cells)
+                    XOPositionList::new(cells)
                 }
             },
         }
@@ -196,7 +185,7 @@ impl fmt::Display for MainBoard {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for y in 0..9 {
             for x in 0..9 {
-                let pos = Position::new(x as u8, y as u8);
+                let pos = XOPosition::new(x as u8, y as u8);
                 let cell = self.get_cell(&pos);
 
                 let last_move_mark = match self.last_move.clone() {
@@ -235,10 +224,10 @@ impl Default for MainBoard {
     }
 }
 
-pub fn play_random_game() -> Option<Player> {
+pub fn play_random_game() -> Option<XOPlayer> {
     let mut board = MainBoard::default();
     let mut rng = rand::thread_rng();
-    let mut player = Player::X;
+    let mut player = XOPlayer::X;
 
     loop {
         match board.valid_moves().choose(&mut rng) {

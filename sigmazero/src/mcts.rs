@@ -1,37 +1,28 @@
-#![feature(test)]
-extern crate test;
-
-mod board;
-mod game;
-mod policy;
-mod small_board;
 
 use core::fmt;
 
-use board::{Player, Position};
-
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
-use game::{Game, GameStatus};
+use crate::game::{Game, GameStatus, Position};
+use crate::policy::{Agent};
 use itertools::izip;
-use policy::{Agent, Policy, RandomAgent};
 use rand::prelude::*;
 
-struct GameNode {
+pub struct GameNode<G: Game> {
     num_visits: u32,
     prior_prob: f32,
     total_value: f32,
     action_value: f32,
-    game_state: Game,
+    pub game_state: G,
     node_state: GameNodeState,
-    previous_action: Option<Position>, // Only None for root
+    previous_action: Option<G::Position>, // Only None for root
 }
 
-impl GameNode {
-    fn new(
+impl<G: Game> GameNode<G> {
+    pub fn new(
         prior_prob: f32,
-        game_state: Game,
+        game_state: G,
         node_state: GameNodeState,
-        previous_action: Option<Position>,
+        previous_action: Option<G::Position>,
     ) -> Self {
         Self {
             num_visits: 0,
@@ -44,19 +35,19 @@ impl GameNode {
         }
     }
 
-    fn is_terminal(&self) -> bool {
+    pub fn is_terminal(&self) -> bool {
         !matches!(
             self.game_state.status(),
             GameStatus::InProgress { player: _ }
         )
     }
 
-    fn update_action_value(&mut self) {
+    pub fn update_action_value(&mut self) {
         self.action_value = self.total_value / self.num_visits as f32;
     }
 }
 
-impl fmt::Display for GameNode {
+impl<G: Game> fmt::Display for GameNode<G> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -78,17 +69,17 @@ enum GameNodeState {
     NotExpanded,
 }
 
-type MCTSTree = Tree<GameNode>;
+type MCTSTree<G: Game> = Tree<GameNode<G>>;
 
-struct MCTS<A: Agent> {
-    tree: MCTSTree,
+pub struct MCTS<G: Game, A: Agent<G>> {
+    tree: MCTSTree<G>,
     c_puct: f32,
     agent: A,
 }
 
-impl<A: Agent> MCTS<A> {
+impl<G: Game, A: Agent<G>> MCTS<G, A> {
     pub fn expand(&mut self, leaf_node_id: NodeId) -> f32 {
-        let mut leaf_node: NodeMut<'_, GameNode> = self.tree.get_mut(leaf_node_id).unwrap();
+        let mut leaf_node: NodeMut<'_, GameNode<G>> = self.tree.get_mut(leaf_node_id).unwrap();
         if leaf_node.value().is_terminal() {
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: true };
 
@@ -140,7 +131,7 @@ impl<A: Agent> MCTS<A> {
             let mut q_vals = Vec::<f32>::new();
             let mut p_vals = Vec::<f32>::new();
             for child_node in base_node.children() {
-                let game_node: &GameNode = child_node.value();
+                let game_node: &GameNode<G> = child_node.value();
                 n_vals.push(game_node.num_visits);
                 q_vals.push(game_node.action_value);
                 p_vals.push(game_node.prior_prob);
@@ -163,7 +154,7 @@ impl<A: Agent> MCTS<A> {
         let mut value = value;
         for node_id in node_chain.into_iter().rev() {
             let mut node = self.tree.get_mut(node_id).expect("No node found");
-            let game_node: &mut GameNode = node.value();
+            let game_node: &mut GameNode<G> = node.value();
             game_node.num_visits += 1;
             game_node.total_value += value;
             game_node.update_action_value();
@@ -172,16 +163,17 @@ impl<A: Agent> MCTS<A> {
         }
     }
 
-    pub fn select_best_child(&self) -> NodeId {
-        self.tree
+    pub fn select_best_child(&self) -> &GameNode<G> {
+        let node_id = self.tree
             .root()
             .children()
             .max_by(|x, y| x.value().num_visits.cmp(&y.value().num_visits))
             .unwrap()
-            .id()
+            .id();
+        self.tree.get(node_id).unwrap().value()
     }
 
-    fn from_root_game_state(root_game_state: Game, agent: A) -> Self {
+    pub fn from_root_game_state(root_game_state: G, agent: A) -> Self {
         Self {
             tree: MCTSTree::new(GameNode::new(
                 0.0,
@@ -196,63 +188,17 @@ impl<A: Agent> MCTS<A> {
 }
 
 
-impl<A: Agent> Default for MCTS<A> {
+impl<G: Game, A: Agent<G>> Default for MCTS<G, A> {
     fn default() -> Self {
         Self {
             tree: MCTSTree::new(GameNode::new(
                 0.0,
-                Game::default(),
+                G::default(),
                 GameNodeState::NotExpanded,
                 None,
             )),
             c_puct: 1.,
             agent: A::new(),
         }
-    }
-}
-
-
-fn main() {
-    let mut rng = rand::thread_rng();
-    let mut root_game = Game::default();
-    loop {
-        if matches!(
-            root_game.status(),
-            GameStatus::InProgress { player: Player::O }
-        ) {
-            _ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
-        }
-        let mut mcts = MCTS::<RandomAgent>::from_root_game_state(root_game.clone(), RandomAgent::new());
-        // println!("{}", mcts.tree);
-        for _ in 0..1000 {
-            let node_chain: Vec<NodeId> = mcts.select();
-            let value = mcts.expand(node_chain.last().copied().unwrap());
-            mcts.backup(node_chain, value);
-        }
-
-        for child in mcts.tree.root().children() {
-            // println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
-        }
-
-        let best_child_id = mcts.select_best_child();
-        let best_child: &GameNode = mcts.tree.get(best_child_id).unwrap().value();
-        println!("{}\n", best_child.game_state.board());
-
-        root_game = best_child.game_state.clone();
-        if best_child.is_terminal() {
-            println!("Result: {:?}", best_child.game_state.status());
-            break;
-        }
-    }
-}
-
-#[cfg(test)]
-mod benchmarks {
-    use crate::board::play_random_game;
-    use test::Bencher;
-
-    #[bench]
-    fn bench_play_game(b: &mut Bencher) {
-        b.iter(|| play_random_game());
     }
 }
