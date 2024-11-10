@@ -26,7 +26,7 @@ fn main() {
                 player: XOPlayer::O
             }
         ) {
-            _ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
+            //_ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
         }
         let mut mcts =
             MCTS::<XOGame, RandomAgent>::from_root_game_state(root_game.clone(), RandomAgent::new());

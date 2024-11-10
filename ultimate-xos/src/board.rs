@@ -177,6 +177,7 @@ impl MainBoard {
     }
 
     pub fn is_draw(&self) -> bool {
+        // FIXME If the only move available leads to draw (i.e. fills in the target small board) then this doesn't seem to work??
         self.available_cells().len() == 0
     }
 }

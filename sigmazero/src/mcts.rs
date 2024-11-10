@@ -168,7 +168,7 @@ impl<G: Game, A: Agent<G>> MCTS<G, A> {
             .root()
             .children()
             .max_by(|x, y| x.value().num_visits.cmp(&y.value().num_visits))
-            .unwrap()
+            .expect("No Children to choose from!")
             .id();
         self.tree.get(node_id).unwrap().value()
     }
