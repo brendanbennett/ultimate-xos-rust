@@ -1,5 +1,6 @@
 use std::fmt;
 use std::str::FromStr;
+use sigmazero::game::Player;
 
 #[derive(Debug, Clone)]
 pub struct Board {
@@ -7,31 +8,42 @@ pub struct Board {
 }
 
 #[repr(u8)]
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum Player {
-    X = 0,
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub enum XOPlayer {
+    #[default] X = 0,
     O = 1,
 }
 
-impl Player {
-    const PLAYERS: [Self; 2] = [Player::X, Player::O];
+impl XOPlayer {
+    const PLAYERS: [Self; 2] = [XOPlayer::X, XOPlayer::O];
 
-    pub fn other_player(&self) -> Player {
+    pub fn other_player(&self) -> XOPlayer {
         match self {
-            Player::X => Player::O,
-            Player::O => Player::X,
+            XOPlayer::X => XOPlayer::O,
+            XOPlayer::O => XOPlayer::X,
         }
     }
 }
 
-impl fmt::Display for Player {
+impl Player for XOPlayer {
+    const PLAYERS: [Self; 2] = [XOPlayer::X, XOPlayer::O];
+
+    fn other_player(&self) -> XOPlayer {
+        match self {
+            XOPlayer::X => XOPlayer::O,
+            XOPlayer::O => XOPlayer::X,
+        }
+    }
+}
+
+impl fmt::Display for XOPlayer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                Player::X => "X",
-                Player::O => "O",
+                XOPlayer::X => "X",
+                XOPlayer::O => "O",
             }
         )
     }
@@ -40,33 +52,33 @@ impl fmt::Display for Player {
 const WINNING: [u16; 8] = [73, 73 << 1, 73 << 2, 7, 7 << 3, 7 << 6, 273, 84];
 
 impl Board {
-    pub fn set_cell(&mut self, position: &Position3, player: Player) {
+    pub fn set_cell(&mut self, position: &Position3, player: XOPlayer) {
         // Need to update next move
         let mask = (1 as u16) << (position.y * 3 + position.x);
         self.bitboards[player as usize] |= mask;
         self.bitboards[player.other_player() as usize] &= !mask;
     }
 
-    pub fn get_cell(&self, position: &Position3) -> Option<Player> {
+    pub fn get_cell(&self, position: &Position3) -> Option<XOPlayer> {
         // Need to decide what this does
         let offset = position.y * 3 + position.x;
         let mask = (1 as u16) << offset;
-        let is_player_x = mask & self.bitboards[Player::X as usize] != 0;
-        let is_player_o = mask & self.bitboards[Player::O as usize] != 0;
+        let is_player_x = mask & self.bitboards[XOPlayer::X as usize] != 0;
+        let is_player_o = mask & self.bitboards[XOPlayer::O as usize] != 0;
         // println!("[{}, {}], board X: {:#018b}, mask: {:#018b}", bits[0], bits[1], self.bitboards[1], mask);
         if is_player_x && is_player_o {
             panic!("{position:?} set for both X and O")
         } else if is_player_o {
-            Some(Player::O)
+            Some(XOPlayer::O)
         } else if is_player_x {
-            Some(Player::X)
+            Some(XOPlayer::X)
         } else {
             None
         }
     }
 
-    pub fn winner(&self) -> Option<Player> {
-        for player in Player::PLAYERS {
+    pub fn winner(&self) -> Option<XOPlayer> {
+        for player in XOPlayer::PLAYERS {
             for win_case in WINNING {
                 if !self.bitboards[player.clone() as usize] & win_case == 0 {
                     return Some(player);
@@ -76,20 +88,20 @@ impl Board {
         None
     }
 
-    fn count_player(&self, player: Player) -> u32 {
+    fn count_player(&self, player: XOPlayer) -> u32 {
         (self.bitboards[player as usize] << 7).count_ones()
     }
 
     pub fn is_full(&self) -> bool {
         // Assumes board is valid
-        self.count_player(Player::X) + self.count_player(Player::O) == 9
+        self.count_player(XOPlayer::X) + self.count_player(XOPlayer::O) == 9
     }
 
     pub fn valid_moves(&self) -> Vec<Position3> {
         let valid_bits = !(self.bitboards[0] | self.bitboards[1]);
         let mut valid_moves: Vec<Position3> = Vec::new();
         if self.winner().is_some() {
-            return valid_moves
+            return valid_moves;
         }
         for i in 0..9 {
             if 1 & (valid_bits >> i) == 1 {
@@ -203,20 +215,20 @@ mod tests {
     #[test]
     fn set_cell() {
         let mut b = Board::default();
-        b.set_cell(&Position3::new(1, 1), Player::X);
-        assert_eq!(b.bitboards[Player::X as usize], 16);
+        b.set_cell(&Position3::new(1, 1), XOPlayer::X);
+        assert_eq!(b.bitboards[XOPlayer::X as usize], 16);
     }
 
     #[test]
     fn get_cell() {
         let b = Board { bitboards: [1, 0] };
-        assert_eq!(b.get_cell(&Position3::new(0, 0)), Some(Player::X));
+        assert_eq!(b.get_cell(&Position3::new(0, 0)), Some(XOPlayer::X));
     }
 
     #[test]
     fn set_get_cell() {
         let mut b = Board::default();
-        let player = Player::X;
+        let player = XOPlayer::X;
         let pos = Position3::new(1, 1);
         b.set_cell(&pos, player);
         assert_eq!(b.get_cell(&pos), Some(player));
@@ -225,49 +237,49 @@ mod tests {
     #[test]
     fn win() {
         let mut b = Board::default();
-        b.set_cell(&Position3::new(0, 0), Player::X);
-        b.set_cell(&Position3::new(2, 0), Player::X);
-        b.set_cell(&Position3::new(1, 1), Player::X);
-        b.set_cell(&Position3::new(1, 2), Player::X);
-        b.set_cell(&Position3::new(0, 2), Player::X);
-        b.set_cell(&Position3::new(1, 0), Player::O);
-        b.set_cell(&Position3::new(0, 1), Player::O);
-        b.set_cell(&Position3::new(2, 1), Player::O);
-        b.set_cell(&Position3::new(2, 2), Player::O);
-        assert_eq!(b.winner(), Some(Player::X));
+        b.set_cell(&Position3::new(0, 0), XOPlayer::X);
+        b.set_cell(&Position3::new(2, 0), XOPlayer::X);
+        b.set_cell(&Position3::new(1, 1), XOPlayer::X);
+        b.set_cell(&Position3::new(1, 2), XOPlayer::X);
+        b.set_cell(&Position3::new(0, 2), XOPlayer::X);
+        b.set_cell(&Position3::new(1, 0), XOPlayer::O);
+        b.set_cell(&Position3::new(0, 1), XOPlayer::O);
+        b.set_cell(&Position3::new(2, 1), XOPlayer::O);
+        b.set_cell(&Position3::new(2, 2), XOPlayer::O);
+        assert_eq!(b.winner(), Some(XOPlayer::X));
     }
 
     #[test]
     fn reset_other_player() {
         let mut b = Board::default();
         let pos = Position3::new(1, 1);
-        b.set_cell(&pos, Player::X);
-        b.set_cell(&pos, Player::O);
-        assert_eq!(b.get_cell(&pos), Some(Player::O));
+        b.set_cell(&pos, XOPlayer::X);
+        b.set_cell(&pos, XOPlayer::O);
+        assert_eq!(b.get_cell(&pos), Some(XOPlayer::O));
     }
 
     #[test]
     fn test_count() {
         let mut b = Board::default();
-        b.set_cell(&Position3::new(0, 1), Player::X);
-        b.set_cell(&Position3::new(1, 0), Player::X);
-        b.set_cell(&Position3::new(2, 2), Player::X);
-        b.set_cell(&Position3::new(2, 0), Player::O);
-        b.set_cell(&Position3::new(1, 1), Player::O);
-        b.set_cell(&Position3::new(0, 2), Player::O);
-        assert_eq!(b.count_player(Player::X), 3);
-        assert_eq!(b.count_player(Player::O), 3);
+        b.set_cell(&Position3::new(0, 1), XOPlayer::X);
+        b.set_cell(&Position3::new(1, 0), XOPlayer::X);
+        b.set_cell(&Position3::new(2, 2), XOPlayer::X);
+        b.set_cell(&Position3::new(2, 0), XOPlayer::O);
+        b.set_cell(&Position3::new(1, 1), XOPlayer::O);
+        b.set_cell(&Position3::new(0, 2), XOPlayer::O);
+        assert_eq!(b.count_player(XOPlayer::X), 3);
+        assert_eq!(b.count_player(XOPlayer::O), 3);
     }
 
     #[test]
     fn test_valid_moves() {
         let mut b = Board::default();
-        b.set_cell(&Position3::new(0, 1), Player::X);
-        b.set_cell(&Position3::new(1, 0), Player::X);
-        b.set_cell(&Position3::new(2, 2), Player::X);
-        b.set_cell(&Position3::new(2, 0), Player::O);
-        b.set_cell(&Position3::new(1, 1), Player::O);
-        b.set_cell(&Position3::new(0, 2), Player::O);
+        b.set_cell(&Position3::new(0, 1), XOPlayer::X);
+        b.set_cell(&Position3::new(1, 0), XOPlayer::X);
+        b.set_cell(&Position3::new(2, 2), XOPlayer::X);
+        b.set_cell(&Position3::new(2, 0), XOPlayer::O);
+        b.set_cell(&Position3::new(1, 1), XOPlayer::O);
+        b.set_cell(&Position3::new(0, 2), XOPlayer::O);
         assert!(b.valid_moves().contains(&Position3::new(0, 0)));
         assert_eq!(b.valid_moves().len(), 3);
     }

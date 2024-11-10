@@ -1,43 +1,16 @@
-use crate::board::{MainBoard, Position, PositionList};
-use crate::small_board::Player;
+use crate::board::{MainBoard, XOPosition, XOPositionList};
+use sigmazero::game::{Game, GameError, GameStatus};
+pub use crate::board::XOPlayer;
 
-
-#[derive(Debug, Clone)]
-pub enum GameStatus {
-    InProgress {player: Player},
-    Won {player: Player},
-    Draw,
-}
-
-impl Into<f32> for GameStatus {
-    fn into(self) -> f32 {
-        match self {
-            Self::InProgress { player: _ } => 0.0,
-            Self::Draw => 0.0,
-            Self::Won { player: _ } => 1.0,
-        }
-    }
-}
-
-impl Default for GameStatus {
-    fn default() -> Self {
-        Self::InProgress { player: Player::X }
-    }
-}
-
-#[derive(Debug)]
-pub enum GameError {
-    InvalidMove { position: Position },
-    GameOver,
-}
+pub type XOGameStatus = GameStatus<XOPlayer>;
 
 #[derive(Clone)]
-pub struct Game {
+pub struct XOGame {
     board: MainBoard,
-    status: GameStatus,
+    status: GameStatus<XOPlayer>,
 }
 
-impl Default for Game {
+impl Default for XOGame {
     fn default() -> Self {
         Self {
             board: MainBoard::default(),
@@ -46,8 +19,13 @@ impl Default for Game {
     }
 }
 
-impl Game {
-    pub fn take_turn(&mut self, position: &Position) -> Result<GameStatus, GameError> {
+impl Game for XOGame {
+    const N: usize = 81;
+
+    type Player = XOPlayer;
+    type Position = XOPosition;
+
+    fn take_turn(&mut self, position: &Self::Position) -> Result<XOGameStatus, GameError<Self::Position>> {
         let current_player = match self.status {
             GameStatus::InProgress {player} => player,
             _ => return Err(GameError::GameOver),
@@ -70,14 +48,16 @@ impl Game {
         Ok(self.status.clone())
     }
 
-    pub fn valid_moves(&self) -> PositionList {
+    fn valid_moves(&self) -> XOPositionList {
         self.board.valid_moves()
     }
 
-    pub fn status(&self) -> &GameStatus {
+    fn status(&self) -> &GameStatus<XOPlayer> {
         &self.status
     }
+}
 
+impl XOGame {
     pub fn board(&self) -> &MainBoard {
         &self.board
     }
