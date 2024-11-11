@@ -1,3 +1,5 @@
+use std::fmt;
+
 use crate::board::{MainBoard, XOPosition, XOPositionList};
 use sigmazero::game::{Game, GameError, GameStatus};
 pub use crate::board::XOPlayer;
@@ -19,9 +21,7 @@ impl Default for XOGame {
     }
 }
 
-impl Game for XOGame {
-    const N: usize = 81;
-
+impl Game<81> for XOGame {
     type Player = XOPlayer;
     type Position = XOPosition;
 
@@ -57,8 +57,8 @@ impl Game for XOGame {
     }
 }
 
-impl XOGame {
-    pub fn board(&self) -> &MainBoard {
-        &self.board
+impl fmt::Display for XOGame {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.board)
     }
 }

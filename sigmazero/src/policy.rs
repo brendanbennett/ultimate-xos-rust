@@ -1,14 +1,14 @@
 use tch::{self, nn, Tensor};
 use rand::prelude::*;
 
-use crate::game::{Game, Position, PositionList};
+use crate::game::{Game, PositionList};
 
-pub struct Policy<G: Game> {
+pub struct Policy<G: Game<N>, const N: usize> {
     moves: PositionList<G::Position>,
     probabilities: Vec<f32>,
 }
 
-impl<G: Game> IntoIterator for Policy<G> {
+impl<G: Game<N>, const N: usize> IntoIterator for Policy<G, N> {
     type Item = (G::Position, f32);
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -20,14 +20,14 @@ impl<G: Game> IntoIterator for Policy<G> {
     }
 }
 
-pub struct RawPolicy (Vec<f32>);
+pub struct RawPolicy<const N: usize>([f32; N]);
 
-impl RawPolicy {
-    pub fn new(vec: Vec<f32>) -> Self {
-        Self(vec)
+impl<const N: usize> RawPolicy<{N}> {
+    pub fn new(arr: [f32; N]) -> Self {
+        Self(arr)
     }
 
-    pub fn mask_policy<G: Game>(&self, game: &G) -> Policy<G> {
+    pub fn mask_policy<G: Game<N>>(&self, game: &G) -> Policy<G, N> {
         let moves = game.valid_moves();
         let mut probabilities: Vec<f32> = moves.iter().map(|p| self.0[Into::<usize>::into(p.clone())]).collect();
         let sum: f32 = probabilities.iter().sum();
@@ -36,9 +36,8 @@ impl RawPolicy {
     }
 }
 
-pub trait Agent<G: Game> {
-    fn eval(&self, game: &G) -> (Policy<G>, f32);
-    fn new() -> Self;
+pub trait Agent<G: Game<N>, const N: usize> {
+    fn eval(&self, game: &G) -> (Policy<G, N>, f32);
 }
 
 // pub struct UltimateXONNPolicy {

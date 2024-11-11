@@ -1,4 +1,4 @@
-use std::fmt;
+use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 
 pub trait Position: PartialEq + Clone + fmt::Debug + fmt::Display + From<usize> + Into<usize> {
@@ -41,12 +41,22 @@ pub enum GameStatus<P: Player> {
     Draw,
 }
 
-impl<P: Player> Into<f32> for GameStatus<P> {
-    fn into(self) -> f32 {
-        match self {
-            Self::InProgress { player: _ } => 0.0,
-            Self::Draw => 0.0,
-            Self::Won { player: _ } => 1.0,
+impl<P: Player> From<GameStatus<P>> for f32 {
+    fn from(value: GameStatus<P>) -> Self {
+        match value {
+            GameStatus::InProgress { player: _ } => 0.0,
+            GameStatus::Draw => 0.0,
+            GameStatus::Won { player: _ } => 1.0,
+        }
+    }
+}
+
+impl<P: Player> From<&GameStatus<P>> for f32 {
+    fn from(value: &GameStatus<P>) -> Self {
+        match value {
+            GameStatus::InProgress { player: _ } => 0.0,
+            GameStatus::Draw => 0.0,
+            GameStatus::Won { player: _ } => 1.0,
         }
     }
 }
@@ -63,8 +73,8 @@ pub enum GameError<P: Position> {
     GameOver,
 }
 
-pub trait Game: Default + Clone {
-    const N: usize;
+pub trait Game<const N: usize>: Default + Clone + Display{
+    const MAX_ACTIONS: usize = N;
 
     type Player: Player;
     type Position: Position;

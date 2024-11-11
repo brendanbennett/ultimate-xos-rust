@@ -7,49 +7,20 @@ mod policies;
 mod small_board;
 
 use rand::prelude::*;
-use sigmazero::game::Game;
+use sigmazero::{game::Game, mcts::self_play};
 use sigmazero::mcts::MCTS;
 use sigmazero::policy::Agent;
+use sigmazero::data::ReplayBuffer;
 
 use ego_tree::NodeId;
 use game::{XOGame, XOGameStatus, XOPlayer};
 use policies::RandomAgent;
 
-
 fn main() {
-    let mut rng = rand::thread_rng();
-    let mut root_game = XOGame::default();
-    loop {
-        if matches!(
-            root_game.status(),
-            XOGameStatus::InProgress {
-                player: XOPlayer::O
-            }
-        ) {
-            //_ = root_game.take_turn(root_game.valid_moves().choose(&mut rng).unwrap());
-        }
-        let mut mcts =
-            MCTS::<XOGame, RandomAgent>::from_root_game_state(root_game.clone(), RandomAgent::new());
-        // println!("{}", mcts.tree);
-        for _ in 0..1000 {
-            let node_chain: Vec<NodeId> = mcts.select();
-            let value = mcts.expand(node_chain.last().copied().unwrap());
-            mcts.backup(node_chain, value);
-        }
+    let rng = rand::thread_rng();
+    let agent = RandomAgent{rng};
 
-        // for child in mcts.tree.root().children() {
-        //     println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
-        // }
-
-        let best_child = mcts.select_best_child();
-        println!("{}\n", best_child.game_state.board());
-
-        root_game = best_child.game_state.clone();
-        if best_child.is_terminal() {
-            println!("Result: {:?}", best_child.game_state.status());
-            break;
-        }
-    }
+    self_play(&agent);
 }
 
 #[cfg(test)]

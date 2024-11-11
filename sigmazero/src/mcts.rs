@@ -2,12 +2,13 @@
 use core::fmt;
 
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
-use crate::game::{Game, GameStatus, Position};
-use crate::policy::{Agent};
-use itertools::izip;
+use crate::game::{self, Game, GameStatus, Position};
+use crate::policy::{self, Agent, RawPolicy};
+use crate::data::ReplayBuffer;
+use itertools::{enumerate, izip, Itertools};
 use rand::prelude::*;
 
-pub struct GameNode<G: Game> {
+pub struct GameNode<G: Game<N>, const N: usize> {
     num_visits: u32,
     prior_prob: f32,
     total_value: f32,
@@ -17,7 +18,7 @@ pub struct GameNode<G: Game> {
     previous_action: Option<G::Position>, // Only None for root
 }
 
-impl<G: Game> GameNode<G> {
+impl<G: Game<N>, const N: usize> GameNode<G, N> {
     pub fn new(
         prior_prob: f32,
         game_state: G,
@@ -47,7 +48,7 @@ impl<G: Game> GameNode<G> {
     }
 }
 
-impl<G: Game> fmt::Display for GameNode<G> {
+impl<G: Game<N>, const N: usize> fmt::Display for GameNode<G, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -64,22 +65,22 @@ impl<G: Game> fmt::Display for GameNode<G> {
 }
 
 #[derive(Debug)]
-enum GameNodeState {
+pub enum GameNodeState {
     Expanded { is_terminal: bool },
     NotExpanded,
 }
 
-type MCTSTree<G: Game> = Tree<GameNode<G>>;
+type MCTSTree<G: Game<N>, const N: usize> = Tree<GameNode<G, N>>;
 
-pub struct MCTS<G: Game, A: Agent<G>> {
-    tree: MCTSTree<G>,
+pub struct MCTS<'a, G: Game<N>, A: Agent<G, N>, const N: usize> {
+    tree: MCTSTree<G, N>,
     c_puct: f32,
-    agent: A,
+    agent: &'a A,
 }
 
-impl<G: Game, A: Agent<G>> MCTS<G, A> {
+impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
     pub fn expand(&mut self, leaf_node_id: NodeId) -> f32 {
-        let mut leaf_node: NodeMut<'_, GameNode<G>> = self.tree.get_mut(leaf_node_id).unwrap();
+        let mut leaf_node: NodeMut<'_, GameNode<G, N>> = self.tree.get_mut(leaf_node_id).unwrap();
         if leaf_node.value().is_terminal() {
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: true };
 
@@ -131,7 +132,7 @@ impl<G: Game, A: Agent<G>> MCTS<G, A> {
             let mut q_vals = Vec::<f32>::new();
             let mut p_vals = Vec::<f32>::new();
             for child_node in base_node.children() {
-                let game_node: &GameNode<G> = child_node.value();
+                let game_node: &GameNode<G, N> = child_node.value();
                 n_vals.push(game_node.num_visits);
                 q_vals.push(game_node.action_value);
                 p_vals.push(game_node.prior_prob);
@@ -154,7 +155,7 @@ impl<G: Game, A: Agent<G>> MCTS<G, A> {
         let mut value = value;
         for node_id in node_chain.into_iter().rev() {
             let mut node = self.tree.get_mut(node_id).expect("No node found");
-            let game_node: &mut GameNode<G> = node.value();
+            let game_node: &mut GameNode<G, N> = node.value();
             game_node.num_visits += 1;
             game_node.total_value += value;
             game_node.update_action_value();
@@ -163,17 +164,25 @@ impl<G: Game, A: Agent<G>> MCTS<G, A> {
         }
     }
 
-    pub fn select_best_child(&self) -> &GameNode<G> {
-        let node_id = self.tree
-            .root()
-            .children()
-            .max_by(|x, y| x.value().num_visits.cmp(&y.value().num_visits))
-            .expect("No Children to choose from!")
-            .id();
-        self.tree.get(node_id).unwrap().value()
+    pub fn select_best_child(&self) -> (NodeRef<'_, GameNode<G, N>>, RawPolicy<N>) {
+        let mut num_sum: f32 = 0.0;
+        let mut policy: [f32; N] = [0.0; N];
+        let mut max_num: u32 = 0;
+        let mut best_child: Option<NodeRef<'_, GameNode<G, N>>> = None;
+        for child in self.tree.root().children() {
+            num_sum += child.value().num_visits as f32;
+            if child.value().num_visits > max_num { // always takes first best value
+                max_num = child.value().num_visits;
+                best_child = Some(child);
+            }
+            policy[child.value().previous_action.clone().unwrap().into()] = child.value().num_visits as f32;
+        }
+        policy = policy.map(|n| n / num_sum);
+
+        (best_child.expect("No children found!"), RawPolicy::new(policy))
     }
 
-    pub fn from_root_game_state(root_game_state: G, agent: A) -> Self {
+    pub fn from_root_game_state(root_game_state: G, agent: &'a A) -> Self {
         Self {
             tree: MCTSTree::new(GameNode::new(
                 0.0,
@@ -187,18 +196,46 @@ impl<G: Game, A: Agent<G>> MCTS<G, A> {
     }
 }
 
+pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &A) -> ReplayBuffer<G, N> {
+    let mut games = vec![G::default()];
+    let mut values = Vec::<f32>::new();
+    let mut policies = Vec::<RawPolicy<N>>::new();
+    
+    loop {
+        let mut mcts =
+            MCTS::<G, A, N>::from_root_game_state(games.last().unwrap().clone(), &agent);
+        // println!("{}", mcts.tree);
+        for _ in 0..800 {
+            let node_chain: Vec<NodeId> = mcts.select();
+            let value = mcts.expand(node_chain.last().copied().unwrap());
+            mcts.backup(node_chain, value);
+        }
 
-impl<G: Game, A: Agent<G>> Default for MCTS<G, A> {
-    fn default() -> Self {
-        Self {
-            tree: MCTSTree::new(GameNode::new(
-                0.0,
-                G::default(),
-                GameNodeState::NotExpanded,
-                None,
-            )),
-            c_puct: 1.,
-            agent: A::new(),
+        // for child in mcts.tree.root().children() {
+        //     println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
+        // }
+
+        let (best_child, raw_policy) = mcts.select_best_child();
+
+        print!("{esc}c", esc = 27 as char);
+        println!("{}", best_child.value().game_state);
+
+        games.push(best_child.value().game_state.clone());
+        policies.push(raw_policy);
+        if best_child.value().is_terminal() {
+            println!("Result: {:?}", games.last().unwrap().status());
+            let final_value: f32 = games.last().unwrap().status().into();
+            for i in 0..games.len() {
+                if i % 2 == 0 {
+                    values.push(final_value);
+                } else {
+                    values.push(-final_value);
+                }
+            }
+            values.reverse();
+            break;
         }
     }
+
+    ReplayBuffer::new(games, values, policies)
 }

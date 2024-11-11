@@ -279,7 +279,7 @@ mod tests {
         b.set_cell(&Position3::new(2, 2), XOPlayer::X);
         b.set_cell(&Position3::new(2, 0), XOPlayer::O);
         b.set_cell(&Position3::new(1, 1), XOPlayer::O);
-        b.set_cell(&Position3::new(0, 2), XOPlayer::O);
+        b.set_cell(&Position3::new(1, 2), XOPlayer::O);
         assert!(b.valid_moves().contains(&Position3::new(0, 0)));
         assert_eq!(b.valid_moves().len(), 3);
     }
