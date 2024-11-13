@@ -8,7 +8,7 @@ pub struct RandomAgent<R: Rng> {
 }
 
 impl<R: Rng> Agent<XOGame, { XOGame::MAX_ACTIONS }> for RandomAgent<R> {
-    fn eval(&self, game: &XOGame) -> (Policy<XOGame, { XOGame::MAX_ACTIONS }>, f32) {
-        (RawPolicy::new([1.0; XOGame::MAX_ACTIONS]).mask_policy(game), (rand::random::<f32>() - 0.5) * 0.2)
+    fn eval(&mut self, game: &XOGame) -> (Policy<XOGame, { XOGame::MAX_ACTIONS }>, f32) {
+        (RawPolicy::new([1.0; XOGame::MAX_ACTIONS]).mask_policy(game), (self.rng.gen::<f32>() - 0.5) * 0.2)
     }
 }

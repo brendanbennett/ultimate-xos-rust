@@ -2,7 +2,7 @@ use std::fmt;
 use std::str::FromStr;
 use sigmazero::game::Player;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Board {
     bitboards: [u16; 2], // X: player 0, O: player 1, and last move
 }
@@ -80,7 +80,7 @@ impl Board {
     pub fn winner(&self) -> Option<XOPlayer> {
         for player in XOPlayer::PLAYERS {
             for win_case in WINNING {
-                if !self.bitboards[player.clone() as usize] & win_case == 0 {
+                if !self.bitboards[player as usize] & win_case == 0 {
                     return Some(player);
                 }
             }

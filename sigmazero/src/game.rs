@@ -1,7 +1,7 @@
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 
-pub trait Position: PartialEq + Clone + fmt::Debug + fmt::Display + From<usize> + Into<usize> {
+pub trait Position: PartialEq + Clone + Copy + fmt::Debug + fmt::Display + From<usize> + Into<usize> {
     fn new(x: u8, y: u8) -> Self;
     fn is_valid(&self) -> bool;
 }
@@ -34,7 +34,7 @@ pub trait Player: fmt::Debug + Clone + Copy + PartialEq + Default + fmt::Display
     fn other_player(&self) -> Self;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub enum GameStatus<P: Player> {
     InProgress {player: P},
     Won {player: P},
@@ -73,7 +73,7 @@ pub enum GameError<P: Position> {
     GameOver,
 }
 
-pub trait Game<const N: usize>: Default + Clone + Display{
+pub trait Game<const N: usize>: Default + Clone + Copy + Display{
     const MAX_ACTIONS: usize = N;
 
     type Player: Player;

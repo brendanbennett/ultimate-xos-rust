@@ -7,7 +7,7 @@ use crate::small_board::Board as SmallBoard;
 use crate::small_board::Position3;
 pub use crate::small_board::XOPlayer;
 
-#[derive(PartialEq, Clone, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 pub struct XOPosition {
     x: u8,
     y: u8,
@@ -96,9 +96,9 @@ pub type XOPositionList = PositionList<XOPosition>;
 //     }
 // }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct MainBoard {
-    small_boards: Vec<SmallBoard>,
+    small_boards: [SmallBoard; 9],
     board: SmallBoard,
     last_move: Option<XOPosition>,
 }
@@ -115,7 +115,7 @@ impl MainBoard {
             Some(winner) => self.board.set_cell(&position.large_pos(), winner),
             None => (),
         };
-        self.last_move = Some(position.clone());
+        self.last_move = Some(*position);
     }
 
     pub fn winner(&self) -> Option<XOPlayer> {
@@ -218,7 +218,7 @@ impl fmt::Display for MainBoard {
 impl Default for MainBoard {
     fn default() -> Self {
         Self {
-            small_boards: vec![SmallBoard::default(); 9],
+            small_boards: [SmallBoard::default(); 9],
             board: SmallBoard::default(),
             last_move: None,
         }

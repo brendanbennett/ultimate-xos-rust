@@ -6,7 +6,7 @@ pub use crate::board::XOPlayer;
 
 pub type XOGameStatus = GameStatus<XOPlayer>;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct XOGame {
     board: MainBoard,
     status: GameStatus<XOPlayer>,
@@ -32,7 +32,7 @@ impl Game<81> for XOGame {
         };
 
         if !self.board.is_valid_move(position) {
-            return Err(GameError::InvalidMove { position: position.clone() });
+            return Err(GameError::InvalidMove { position: *position });
         }
 
         self.board.set_cell(position, current_player);
@@ -45,7 +45,7 @@ impl Game<81> for XOGame {
             GameStatus::InProgress {player: current_player.other_player()}
         };
 
-        Ok(self.status.clone())
+        Ok(self.status)
     }
 
     fn valid_moves(&self) -> XOPositionList {

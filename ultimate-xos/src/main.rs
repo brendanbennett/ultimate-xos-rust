@@ -18,9 +18,13 @@ use policies::RandomAgent;
 
 fn main() {
     let rng = rand::thread_rng();
-    let agent = RandomAgent{rng};
+    let mut agent = RandomAgent{rng};
 
-    self_play(&agent);
+    let replay = self_play(&mut agent);
+
+    for (game, value, policy) in replay.iter() {
+        println!("{game}{value}");
+    }
 }
 
 #[cfg(test)]

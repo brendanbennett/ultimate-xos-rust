@@ -4,7 +4,7 @@ use rand::prelude::*;
 use crate::game::{Game, PositionList};
 
 pub struct Policy<G: Game<N>, const N: usize> {
-    moves: PositionList<G::Position>,
+    positions: PositionList<G::Position>,
     probabilities: Vec<f32>,
 }
 
@@ -13,10 +13,7 @@ impl<G: Game<N>, const N: usize> IntoIterator for Policy<G, N> {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        let positions = self.moves.clone().into_iter();
-        let probs = self.probabilities.into_iter();
-
-        positions.zip(probs).collect::<Vec<_>>().into_iter()
+        self.positions.to_owned().into_iter().zip(self.probabilities).collect::<Vec<_>>().into_iter()
     }
 }
 
@@ -28,16 +25,16 @@ impl<const N: usize> RawPolicy<{N}> {
     }
 
     pub fn mask_policy<G: Game<N>>(&self, game: &G) -> Policy<G, N> {
-        let moves = game.valid_moves();
-        let mut probabilities: Vec<f32> = moves.iter().map(|p| self.0[Into::<usize>::into(p.clone())]).collect();
+        let positions = game.valid_moves();
+        let mut probabilities: Vec<f32> = positions.iter().map(|p| self.0[Into::<usize>::into(*p)]).collect();
         let sum: f32 = probabilities.iter().sum();
         probabilities = probabilities.into_iter().map(|p| p / sum).collect();
-        Policy { moves, probabilities }
+        Policy { positions, probabilities }
     }
 }
 
 pub trait Agent<G: Game<N>, const N: usize> {
-    fn eval(&self, game: &G) -> (Policy<G, N>, f32);
+    fn eval(&mut self, game: &G) -> (Policy<G, N>, f32);
 }
 
 // pub struct UltimateXONNPolicy {

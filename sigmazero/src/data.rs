@@ -17,4 +17,11 @@ impl<G: Game<N>, const N: usize> ReplayBuffer<G, N> {
             policies,
         }
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = (&G, &f32, &RawPolicy<N>)> {
+        self.games.iter()
+            .zip(self.values.iter())
+            .zip(self.policies.iter())
+            .map(|((game, value), policy)| (game, value, policy))
+    }
 }
