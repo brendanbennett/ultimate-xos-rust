@@ -73,7 +73,7 @@ pub enum GameError<P: Position> {
     GameOver,
 }
 
-pub trait Game<const N: usize>: Default + Clone + Copy + Display{
+pub trait Game<const N: usize>: Default + Clone + Copy + Display {
     const MAX_ACTIONS: usize = N;
 
     type Player: Player;
@@ -82,4 +82,5 @@ pub trait Game<const N: usize>: Default + Clone + Copy + Display{
     fn take_turn(&mut self, position: &Self::Position) -> Result<GameStatus<Self::Player>, GameError<Self::Position>>;
     fn valid_moves(&self) -> PositionList<Self::Position>;
     fn status(&self) -> &GameStatus<Self::Player>;
+    fn displays(items: Vec<String>) -> impl Display;
 }

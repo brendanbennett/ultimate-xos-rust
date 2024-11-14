@@ -1,3 +1,5 @@
+use std::ops::Deref;
+
 use tch::{self, nn, Tensor};
 use rand::prelude::*;
 
@@ -30,6 +32,13 @@ impl<const N: usize> RawPolicy<{N}> {
         let sum: f32 = probabilities.iter().sum();
         probabilities = probabilities.into_iter().map(|p| p / sum).collect();
         Policy { positions, probabilities }
+    }
+}
+
+impl<const N: usize> Deref for RawPolicy<N> {
+    type Target = [f32; N];
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 

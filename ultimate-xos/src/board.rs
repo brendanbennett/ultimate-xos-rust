@@ -2,6 +2,7 @@ use std::fmt;
 use std::ops::{Deref, DerefMut};
 use rand::seq::SliceRandom;
 use sigmazero::game::{Position, PositionList};
+use tch::display;
 
 use crate::small_board::Board as SmallBoard;
 use crate::small_board::Position3;
@@ -208,8 +209,8 @@ impl fmt::Display for MainBoard {
                 } else {
                     write!(f, "\n{}", "-".repeat(35))?
                 }
+                writeln!(f)?;
             }
-            writeln!(f)?;
         }
         Ok(())
     }
@@ -222,6 +223,46 @@ impl Default for MainBoard {
             board: SmallBoard::default(),
             last_move: None,
         }
+    }
+}
+
+pub struct BoardDisplayer {
+    items: Vec<String>
+}
+
+impl BoardDisplayer {
+    pub fn new(items: Vec<String>) -> Self {
+        if items.len() != 81 {
+            panic!("Displayer expects 81 items, got {}", items.len())
+        }
+        Self {items}
+    }
+}
+
+impl fmt::Display for BoardDisplayer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for y in 0..9 {
+            for x in 0..9 {
+                write!(f, "{}", self.items[x + 9 * y])?;
+                if x < 8 {
+                    if x % 3 == 2 {
+                        write!(f, "‖")?;
+                    } else {
+                        write!(f, "|")?;
+                    }
+                }
+            }
+            if y < 8 {
+                if y % 3 == 2 {
+                    write!(f, "\n{}", "=".repeat(35))?
+                } else {
+                    write!(f, "\n{}", "-".repeat(35))?
+                }
+                writeln!(f)?;
+            }
+            
+        }
+        Ok(())
     }
 }
 

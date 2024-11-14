@@ -225,7 +225,7 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &mut A) -> R
         if best_child.is_terminal() {
             println!("Result: {:?}", best_child.game_state.status());
             let final_value: f32 = best_child.game_state.status().into();
-            for i in 1..games.len()+1 {
+            for i in 0..games.len() {
                 if i % 2 == 0 {
                     values.push(final_value);
                 } else {

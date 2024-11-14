@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::board::{MainBoard, XOPosition, XOPositionList};
+use crate::board::{BoardDisplayer, MainBoard, XOPosition, XOPositionList};
 use sigmazero::game::{Game, GameError, GameStatus};
 pub use crate::board::XOPlayer;
 
@@ -54,6 +54,10 @@ impl Game<81> for XOGame {
 
     fn status(&self) -> &GameStatus<XOPlayer> {
         &self.status
+    }
+
+    fn displays(items: Vec<String>) -> impl fmt::Display {
+        BoardDisplayer::new(items)
     }
 }
 
