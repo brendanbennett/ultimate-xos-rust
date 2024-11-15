@@ -6,6 +6,7 @@ use crate::game::{self, Game, GameStatus, Position};
 use crate::policy::{self, Agent, RawPolicy};
 use crate::data::ReplayBuffer;
 use itertools::{enumerate, izip, Itertools};
+use indicatif::ProgressIterator;
 use rand::prelude::*;
 
 pub struct GameNode<G: Game<N>, const N: usize> {
@@ -196,47 +197,54 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
     }
 }
 
-pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &mut A) -> ReplayBuffer<G, N> {
-    let mut games = vec![G::default()];
-    let mut values = Vec::<f32>::new();
-    let mut policies = Vec::<RawPolicy<N>>::new();
-    
-    loop {
-        let mut mcts =
-            MCTS::<G, A, N>::from_root_game_state(games.last().unwrap().clone(), agent);
-        // println!("{}", mcts.tree);
-        for _ in 0..800 {
-            let node_chain: Vec<NodeId> = mcts.select();
-            let value = mcts.expand(node_chain.last().copied().unwrap());
-            mcts.backup(node_chain, value);
-        }
+pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &mut A, n_games: usize, verbose: bool) -> ReplayBuffer<G, N> {
+    let mut buffer = ReplayBuffer::default();
 
-        // for child in mcts.tree.root().children() {
-        //     println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
-        // }
-
-        let (best_child, raw_policy) = mcts.select_best_child();
-
-        print!("{esc}c", esc = 27 as char);
-        println!("{}", best_child.game_state);
-
-        policies.push(raw_policy);
-        
-        if best_child.is_terminal() {
-            println!("Result: {:?}", best_child.game_state.status());
-            let final_value: f32 = best_child.game_state.status().into();
-            for i in 0..games.len() {
-                if i % 2 == 0 {
-                    values.push(final_value);
-                } else {
-                    values.push(-final_value);
-                }
+    for _ in (0..n_games).progress() {
+        let mut games = vec![G::default()];
+        let mut values = Vec::<f32>::new();
+        let mut policies = Vec::<RawPolicy<N>>::new();
+        loop {
+            let mut mcts =
+                MCTS::<G, A, N>::from_root_game_state(games.last().unwrap().clone(), agent);
+            // println!("{}", mcts.tree);
+            for _ in 0..800 {
+                let node_chain: Vec<NodeId> = mcts.select();
+                let value = mcts.expand(node_chain.last().copied().unwrap());
+                mcts.backup(node_chain, value);
             }
-            values.reverse();
-            break;
-        }
-        games.push(best_child.game_state);
-    }
 
-    ReplayBuffer::new(games, values, policies)
+            // for child in mcts.tree.root().children() {
+            //     println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
+            // }
+
+            let (best_child, raw_policy) = mcts.select_best_child();
+
+            if verbose {
+                print!("{esc}c", esc = 27 as char);
+                println!("{}", best_child.game_state);
+            }
+
+            policies.push(raw_policy);
+            
+            if best_child.is_terminal() {
+                if verbose {
+                    println!("Result: {:?}", best_child.game_state.status());
+                }
+                let final_value: f32 = best_child.game_state.status().into();
+                for i in 0..games.len() {
+                    if i % 2 == 0 {
+                        values.push(final_value);
+                    } else {
+                        values.push(-final_value);
+                    }
+                }
+                values.reverse();
+                break;
+            }
+            games.push(best_child.game_state);
+        }
+        buffer.append(&mut games, &mut values, &mut policies);
+    }
+    buffer
 }

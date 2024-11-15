@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 ego-tree = "0.9.0"
+indicatif = "0.17.9"
 itertools = "0.13.0"
 rand = "0.8.5"
 tch = "0.18.0"

@@ -6,12 +6,15 @@ mod game;
 mod policies;
 mod small_board;
 
+use std::mem::size_of_val;
+use std::time::Instant;
 use colored::Colorize;
 use rand::prelude::*;
 use sigmazero::{game::Game, mcts::self_play};
 use sigmazero::mcts::MCTS;
 use sigmazero::policy::{Agent, RawPolicy};
 use sigmazero::data::ReplayBuffer;
+use itertools::Itertools;
 
 use ego_tree::NodeId;
 use game::{XOGame, XOGameStatus, XOPlayer};
@@ -39,13 +42,19 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent{rng};
 
-    let replay = self_play(&mut agent);
+    let n_games = 10;
+
+    let start = Instant::now();
+    let replay = self_play(&mut agent, n_games, false);
+    let duration = start.elapsed();
 
     for (game, value, policy) in replay.iter() {
-        println!("{game}");
-        println!("{}", XOGame::displays(format_raw_policy(policy)));
-        println!("Value: {value}");
+        // println!("{game}");
+        // println!("{}", XOGame::displays(format_raw_policy(policy)));
+        // println!("Value: {value}");
     }
+
+    println!("generated {} Games with size {} bytes in {:?} seconds", n_games, size_of_val(&*(replay.iter().collect_vec())), duration);
 }
 
 #[cfg(test)]
