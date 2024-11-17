@@ -1,5 +1,5 @@
 use core::panic;
-use std::{env::current_exe, fmt};
+use std::fmt;
 
 pub use crate::board::XOPlayer;
 use crate::board::{BoardDisplayer, MainBoard, XOPosition, XOPositionList};

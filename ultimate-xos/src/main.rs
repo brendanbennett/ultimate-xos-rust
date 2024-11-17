@@ -8,16 +8,12 @@ mod small_board;
 
 use colored::Colorize;
 use itertools::Itertools;
-use rand::prelude::*;
-use sigmazero::data::ReplayBuffer;
-use sigmazero::mcts::MCTS;
-use sigmazero::policy::{Agent, RawPolicy};
+use sigmazero::policy::RawPolicy;
 use sigmazero::{game::Game, mcts::self_play};
 use std::mem::size_of_val;
 use std::time::Instant;
 
-use ego_tree::NodeId;
-use game::{XOGame, XOGameStatus, XOPlayer};
+use game::XOGame;
 use policies::RandomAgent;
 
 fn format_raw_policy<const N: usize>(raw_policy: &RawPolicy<N>) -> Vec<String> {

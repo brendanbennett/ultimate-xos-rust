@@ -1,9 +1,7 @@
 use colored::Colorize;
 use rand::seq::SliceRandom;
-use sigmazero::game::{Player, Position, PositionList};
+use sigmazero::game::{Position, PositionList};
 use std::fmt;
-use std::ops::{Deref, DerefMut};
-use tch::display;
 
 use crate::small_board::Board as SmallBoard;
 use crate::small_board::Position3;
