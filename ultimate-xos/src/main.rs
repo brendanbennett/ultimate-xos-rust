@@ -42,16 +42,17 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent{rng};
 
-    let n_games = 10;
+    let n_games = 1;
 
     let start = Instant::now();
     let replay = self_play(&mut agent, n_games, false);
     let duration = start.elapsed();
 
     for (game, value, policy) in replay.iter() {
-        // println!("{game}");
-        // println!("{}", XOGame::displays(format_raw_policy(policy)));
-        // println!("Value: {value}");
+        println!("{game}");
+        // println!("{}", game.features());
+        println!("{}", XOGame::displays(format_raw_policy(policy)));
+        println!("Value: {value}");
     }
 
     println!("generated {} Games with size {} bytes in {:?} seconds", n_games, size_of_val(&*(replay.iter().collect_vec())), duration);

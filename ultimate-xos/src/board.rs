@@ -1,7 +1,8 @@
 use std::fmt;
 use std::ops::{Deref, DerefMut};
+use colored::Colorize;
 use rand::seq::SliceRandom;
-use sigmazero::game::{Position, PositionList};
+use sigmazero::game::{Player, Position, PositionList};
 use tch::display;
 
 use crate::small_board::Board as SmallBoard;
@@ -181,6 +182,28 @@ impl MainBoard {
         // FIXME If the only move available leads to draw (i.e. fills in the target small board) then this doesn't seem to work??
         self.available_cells().len() == 0
     }
+
+    pub fn features_for_player(&self, player: XOPlayer) -> [[[i64; 9]; 9]; 3] { // [current player, other player, last move]
+        let mut arr: [[[i64; 9]; 9]; 3] = [[[0; 9]; 9]; 3];
+        for y in 0..9 {
+            for x in 0..9 {
+                let cell = self.get_cell(&XOPosition::new(x, y));
+                match cell {
+                    Some(p) => {
+                        if p == player {
+                            arr[0][y as usize][x as usize] = 1
+                        } else {
+                            arr[1][y as usize][x as usize] = 1
+                        }},
+                    None => (),
+                }
+            }
+        }
+        if let Some(last_move) = self.last_move {
+            arr[2][last_move.y as usize][last_move.x as usize] = 1
+        }
+        arr
+    }
 }
 
 impl fmt::Display for MainBoard {
@@ -194,7 +217,16 @@ impl fmt::Display for MainBoard {
                     Some(last_move) => {if last_move == pos {"-"} else {" "}},
                     None => " ",
                 };
-                write!(f, "{last_move_mark}{}{last_move_mark}", cell.map_or(" ".to_string(), |p| p.to_string()))?;
+                let p = match cell {
+                    Some(player) => {
+                        if player == XOPlayer::X {
+                            player.to_string().red().to_string()
+                        } else {
+                            player.to_string().green().to_string()
+                        }},
+                    None => {" ".to_string()},
+                };
+                write!(f, "{last_move_mark}{}{last_move_mark}", p)?;
                 if x < 8 {
                     if x % 3 == 2 {
                         write!(f, "‖")?;

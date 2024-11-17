@@ -1,4 +1,5 @@
-use std::fmt;
+use core::panic;
+use std::{env::current_exe, fmt};
 
 use crate::board::{BoardDisplayer, MainBoard, XOPosition, XOPositionList};
 use sigmazero::game::{Game, GameError, GameStatus};
@@ -22,6 +23,8 @@ impl Default for XOGame {
 }
 
 impl Game<81> for XOGame {
+    const FEATURES_SHAPE: &'static [i64] = &[2, 9, 9];
+
     type Player = XOPlayer;
     type Position = XOPosition;
 
@@ -58,6 +61,22 @@ impl Game<81> for XOGame {
 
     fn displays(items: Vec<String>) -> impl fmt::Display {
         BoardDisplayer::new(items)
+    }
+
+    fn features(&self) -> tch::Tensor {
+        let current_player = match self.status {
+            GameStatus::InProgress {player} => player,
+            _ => panic!("Features for completed game? In esta economia?"),
+        };
+        tch::Tensor::from_slice(self.board
+            .features_for_player(current_player)
+            .iter()
+            .flatten()
+            .flatten()
+            .copied()
+            .collect::<Vec<_>>()
+            .as_slice()
+        ).reshape([3, 9, 9])
     }
 }
 

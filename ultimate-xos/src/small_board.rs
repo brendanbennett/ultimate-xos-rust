@@ -60,7 +60,6 @@ impl Board {
     }
 
     pub fn get_cell(&self, position: &Position3) -> Option<XOPlayer> {
-        // Need to decide what this does
         let offset = position.y * 3 + position.x;
         let mask = (1 as u16) << offset;
         let is_player_x = mask & self.bitboards[XOPlayer::X as usize] != 0;

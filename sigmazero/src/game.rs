@@ -75,6 +75,7 @@ pub enum GameError<P: Position> {
 
 pub trait Game<const N: usize>: Default + Clone + Copy + Display {
     const MAX_ACTIONS: usize = N;
+    const FEATURES_SHAPE: &'static [i64];
 
     type Player: Player;
     type Position: Position;
@@ -83,4 +84,5 @@ pub trait Game<const N: usize>: Default + Clone + Copy + Display {
     fn valid_moves(&self) -> PositionList<Self::Position>;
     fn status(&self) -> &GameStatus<Self::Player>;
     fn displays(items: Vec<String>) -> impl Display;
+    fn features(&self) -> tch::Tensor;
 }
