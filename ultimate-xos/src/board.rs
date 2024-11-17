@@ -1,8 +1,8 @@
-use std::fmt;
-use std::ops::{Deref, DerefMut};
 use colored::Colorize;
 use rand::seq::SliceRandom;
 use sigmazero::game::{Player, Position, PositionList};
+use std::fmt;
+use std::ops::{Deref, DerefMut};
 use tch::display;
 
 use crate::small_board::Board as SmallBoard;
@@ -17,7 +17,7 @@ pub struct XOPosition {
 
 impl Position for XOPosition {
     fn new(x: u8, y: u8) -> Self {
-        Self {x: x, y: y}
+        Self { x: x, y: y }
     }
 
     fn is_valid(&self) -> bool {
@@ -126,22 +126,20 @@ impl MainBoard {
 
     pub fn is_valid_move(&self, position: &XOPosition) -> bool {
         if !position.is_valid() {
-            return false
+            return false;
         }
         // If not first move
         match &self.last_move {
             Some(last_move) => {
-                let target_small_board= &self.small_boards[last_move.small_pos().flat() as usize];
+                let target_small_board = &self.small_boards[last_move.small_pos().flat() as usize];
                 if position.large_pos() != last_move.small_pos() {
                     if !(target_small_board.valid_moves().len() == 0) {
                         return false;
                     };
                 } else {
-                    return target_small_board
-                                .get_cell(&position.small_pos())
-                                .is_none()
+                    return target_small_board.get_cell(&position.small_pos()).is_none();
                 }
-            },
+            }
             None => (),
         }
         // If first move or target small board is full
@@ -162,9 +160,11 @@ impl MainBoard {
 
     pub fn valid_moves(&self) -> XOPositionList {
         match &self.last_move {
-            None => {return self.available_cells();},
+            None => {
+                return self.available_cells();
+            }
             Some(last_move) => {
-                let target_small_board= &self.small_boards[last_move.small_pos().flat() as usize];
+                let target_small_board = &self.small_boards[last_move.small_pos().flat() as usize];
                 if target_small_board.valid_moves().len() == 0 {
                     return self.available_cells();
                 } else {
@@ -174,7 +174,7 @@ impl MainBoard {
                     }
                     XOPositionList::new(cells)
                 }
-            },
+            }
         }
     }
 
@@ -183,7 +183,8 @@ impl MainBoard {
         self.available_cells().len() == 0
     }
 
-    pub fn features_for_player(&self, player: XOPlayer) -> [[[i64; 9]; 9]; 3] { // [current player, other player, last move]
+    pub fn features_for_player(&self, player: XOPlayer) -> [[[i64; 9]; 9]; 3] {
+        // [current player, other player, last move]
         let mut arr: [[[i64; 9]; 9]; 3] = [[[0; 9]; 9]; 3];
         for y in 0..9 {
             for x in 0..9 {
@@ -194,7 +195,8 @@ impl MainBoard {
                             arr[0][y as usize][x as usize] = 1
                         } else {
                             arr[1][y as usize][x as usize] = 1
-                        }},
+                        }
+                    }
                     None => (),
                 }
             }
@@ -214,7 +216,13 @@ impl fmt::Display for MainBoard {
                 let cell = self.get_cell(&pos);
 
                 let last_move_mark = match self.last_move.clone() {
-                    Some(last_move) => {if last_move == pos {"-"} else {" "}},
+                    Some(last_move) => {
+                        if last_move == pos {
+                            "-"
+                        } else {
+                            " "
+                        }
+                    }
                     None => " ",
                 };
                 let p = match cell {
@@ -223,8 +231,9 @@ impl fmt::Display for MainBoard {
                             player.to_string().red().to_string()
                         } else {
                             player.to_string().green().to_string()
-                        }},
-                    None => {" ".to_string()},
+                        }
+                    }
+                    None => " ".to_string(),
                 };
                 write!(f, "{last_move_mark}{}{last_move_mark}", p)?;
                 if x < 8 {
@@ -259,7 +268,7 @@ impl Default for MainBoard {
 }
 
 pub struct BoardDisplayer {
-    items: Vec<String>
+    items: Vec<String>,
 }
 
 impl BoardDisplayer {
@@ -267,7 +276,7 @@ impl BoardDisplayer {
         if items.len() != 81 {
             panic!("Displayer expects 81 items, got {}", items.len())
         }
-        Self {items}
+        Self { items }
     }
 }
 
@@ -292,7 +301,6 @@ impl fmt::Display for BoardDisplayer {
                 }
                 writeln!(f)?;
             }
-            
         }
         Ok(())
     }
@@ -310,7 +318,10 @@ pub fn play_random_game() -> Option<XOPlayer> {
         }
         // println!("{board}");
         match board.winner() {
-            Some(winner) => {println!("Player {winner} wins!"); break Some(winner);},
+            Some(winner) => {
+                println!("Player {winner} wins!");
+                break Some(winner);
+            }
             None => (),
         }
         player = player.other_player();
@@ -320,55 +331,89 @@ pub fn play_random_game() -> Option<XOPlayer> {
 #[test]
 fn test_draw_by_filling_last_target_board() {
     let mut board = MainBoard::default();
-    
+
     // Set up alternating wins in a pattern that doesn't result in a main board win
     // X wins
-    for board_idx in [0,2,3,7] {
+    for board_idx in [0, 2, 3, 7] {
         let large_pos = Position3::from_flat(board_idx);
         // Create diagonal win for X in each board
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(0,0)), XOPlayer::X);
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(1,1)), XOPlayer::X);
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(2,2)), XOPlayer::X);
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(0, 0)),
+            XOPlayer::X,
+        );
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(1, 1)),
+            XOPlayer::X,
+        );
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(2, 2)),
+            XOPlayer::X,
+        );
     }
-    
+
     // O wins
-    for board_idx in [1,5,6,8] {
+    for board_idx in [1, 5, 6, 8] {
         let large_pos = Position3::from_flat(board_idx);
         // Create vertical win for O in each board
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(1,0)), XOPlayer::O);
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(1,1)), XOPlayer::O);
-        board.set_cell(&XOPosition::from_subpos(large_pos.clone(), Position3::new(1,2)), XOPlayer::O);
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(1, 0)),
+            XOPlayer::O,
+        );
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(1, 1)),
+            XOPlayer::O,
+        );
+        board.set_cell(
+            &XOPosition::from_subpos(large_pos.clone(), Position3::new(1, 2)),
+            XOPlayer::O,
+        );
     }
-    
+
     // Now board 4 (center) should be our target board - fill it almost completely
     let target_board_pos = Position3::from_flat(4);
     // Fill with mixed X and O moves, leaving only one space
     let moves = [
-        (0,0,XOPlayer::X), (0,1,XOPlayer::O), (0,2,XOPlayer::X),
-        (1,0,XOPlayer::O), (2,0,XOPlayer::X), (2,1,XOPlayer::O),
-        (2,2,XOPlayer::X), (1,2,XOPlayer::O)
-        // Leave (1,1) for final move
+        (0, 0, XOPlayer::X),
+        (0, 1, XOPlayer::O),
+        (0, 2, XOPlayer::X),
+        (1, 0, XOPlayer::O),
+        (2, 0, XOPlayer::X),
+        (2, 1, XOPlayer::O),
+        (2, 2, XOPlayer::X),
+        (1, 2, XOPlayer::O), // Leave (1,1) for final move
     ];
-    
+
     for (x, y, player) in moves {
-        board.set_cell(&XOPosition::from_subpos(target_board_pos.clone(), Position3::new(x,y)), player);
+        board.set_cell(
+            &XOPosition::from_subpos(target_board_pos.clone(), Position3::new(x, y)),
+            player,
+        );
     }
-    
+
     // Set last move to force next move into center board
-    board.set_cell(&XOPosition::from_subpos(Position3::from_flat(5), Position3::new(0,2)), XOPlayer::O);
+    board.set_cell(
+        &XOPosition::from_subpos(Position3::from_flat(5), Position3::new(0, 2)),
+        XOPlayer::O,
+    );
     println!("{}", board);
-    
+
     // Verify setup
     assert!(!board.is_draw(), "Board should not be in draw state yet");
-    assert!(board.winner().is_none(), "There should be no winner before final move");
+    assert!(
+        board.winner().is_none(),
+        "There should be no winner before final move"
+    );
     let valid_moves = board.valid_moves();
     assert_eq!(valid_moves.len(), 1, "Should only have one valid move left");
-    
+
     // Make final move
-    let final_move = XOPosition::from_subpos(target_board_pos, Position3::new(1,1));
+    let final_move = XOPosition::from_subpos(target_board_pos, Position3::new(1, 1));
     board.set_cell(&final_move, XOPlayer::X);
-    
+
     // Verify draw
-    assert!(board.is_draw(), "Board should be in draw state after final move");
+    assert!(
+        board.is_draw(),
+        "Board should be in draw state after final move"
+    );
     assert!(board.winner().is_none(), "There should be no winner");
 }

@@ -6,15 +6,15 @@ mod game;
 mod policies;
 mod small_board;
 
-use std::mem::size_of_val;
-use std::time::Instant;
 use colored::Colorize;
+use itertools::Itertools;
 use rand::prelude::*;
-use sigmazero::{game::Game, mcts::self_play};
+use sigmazero::data::ReplayBuffer;
 use sigmazero::mcts::MCTS;
 use sigmazero::policy::{Agent, RawPolicy};
-use sigmazero::data::ReplayBuffer;
-use itertools::Itertools;
+use sigmazero::{game::Game, mcts::self_play};
+use std::mem::size_of_val;
+use std::time::Instant;
 
 use ego_tree::NodeId;
 use game::{XOGame, XOGameStatus, XOPlayer};
@@ -40,7 +40,7 @@ fn colour_number(number: f32) -> String {
 
 fn main() {
     let rng = rand::thread_rng();
-    let mut agent = RandomAgent{rng};
+    let mut agent = RandomAgent { rng };
 
     let n_games = 1;
 
@@ -55,7 +55,12 @@ fn main() {
         println!("Value: {value}");
     }
 
-    println!("generated {} Games with size {} bytes in {:?} seconds", n_games, size_of_val(&*(replay.iter().collect_vec())), duration);
+    println!(
+        "generated {} Games with size {} bytes in {:?} seconds",
+        n_games,
+        size_of_val(&*(replay.iter().collect_vec())),
+        duration
+    );
 }
 
 #[cfg(test)]

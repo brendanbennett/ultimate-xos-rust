@@ -1,6 +1,6 @@
+use sigmazero::game::Player;
 use std::fmt;
 use std::str::FromStr;
-use sigmazero::game::Player;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Board {
@@ -10,7 +10,8 @@ pub struct Board {
 #[repr(u8)]
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub enum XOPlayer {
-    #[default] X = 0,
+    #[default]
+    X = 0,
     O = 1,
 }
 
