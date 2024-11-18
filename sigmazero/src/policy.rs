@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use tch::Tensor;
+
 use crate::game::{Game, PositionList};
 
 pub struct Policy<G: Game<N>, const N: usize> {
@@ -30,6 +32,10 @@ impl<const N: usize> RawPolicy<{N}> {
         probabilities = probabilities.into_iter().map(|p| p / sum).collect();
         Policy { positions, probabilities }
     }
+
+    pub fn to_tensor(&self, shape: &[i64]) -> Tensor {
+        Tensor::from_slice(&self.0).reshape(shape)
+    }
 }
 
 impl<const N: usize> Deref for RawPolicy<N> {
@@ -40,7 +46,7 @@ impl<const N: usize> Deref for RawPolicy<N> {
 }
 
 pub trait Agent<G: Game<N>, const N: usize> {
-    fn eval(&mut self, game: &G) -> (Policy<G, N>, f32);
+    fn eval(&mut self, game: &G) -> (RawPolicy<N>, f32);
 }
 
 // pub struct UltimateXONNPolicy {

@@ -23,7 +23,8 @@ impl Default for XOGame {
 }
 
 impl Game<81> for XOGame {
-    const FEATURES_SHAPE: &'static [i64] = &[2, 9, 9];
+    const FEATURES_SHAPE: &'static [i64] = &[3, 9, 9];
+    const FEATURES_SIZE: i64 = 3 * 9 * 9;
 
     type Player = XOPlayer;
     type Position = XOPosition;

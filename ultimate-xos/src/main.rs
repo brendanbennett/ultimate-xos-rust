@@ -12,6 +12,7 @@ use sigmazero::policy::RawPolicy;
 use sigmazero::{game::Game, mcts::self_play};
 use std::mem::size_of_val;
 use std::time::Instant;
+use tch::nn;
 
 use game::XOGame;
 use policies::RandomAgent;
@@ -49,12 +50,17 @@ fn main() {
     let replay = self_play(&mut agent, n_games, false);
     let duration = start.elapsed();
 
-    for (game, value, policy) in replay.iter() {
-        println!("{game}");
-        // println!("{}", game.features());
-        println!("{}", XOGame::displays(format_raw_policy(policy)));
-        println!("Value: {value}");
-    }
+    let vs = nn::VarStore::new(tch::Device::Cpu);
+
+    let nn_agent = 
+
+
+    // for (game, value, policy) in replay.iter() {
+    //     println!("{game}");
+    //     // println!("{}", game.features());
+    //     println!("{}", XOGame::displays(format_raw_policy(policy)));
+    //     println!("Value: {value}");
+    // }
 
     println!(
         "generated {} Games with size {} bytes in {:?} seconds",

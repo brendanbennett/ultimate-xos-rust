@@ -33,6 +33,10 @@ impl<G: Game<N>, const N: usize> ReplayBuffer<G, N> {
         self.values.append(values);
         self.policies.append(policies);
     }
+
+    pub fn to_tensor_data() {
+
+    }
 }
 
 impl<G: Game<N>, const N: usize> Default for ReplayBuffer<G, N> {
@@ -41,6 +45,22 @@ impl<G: Game<N>, const N: usize> Default for ReplayBuffer<G, N> {
             games: Vec::new(),
             values: Vec::new(),
             policies: Vec::new(),
+        }
+    }
+}
+
+pub struct ReplayBufferTensorData<> {
+    pub games: tch::Tensor,
+    pub values: tch::Tensor,
+    pub policies: tch::Tensor,
+}
+
+impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensorData {
+    fn from(buffer: ReplayBuffer<G, N>) -> Self {
+        Self {
+            games: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0),
+            values: tch::Tensor::from_slice(&buffer.values),
+            policies: tch::Tensor::stack(&buffer.policies.into_iter().map(|p| p.to_tensor(&[N as i64])).collect::<Vec<_>>(), 0)
         }
     }
 }

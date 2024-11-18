@@ -96,7 +96,7 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
             // Would be calculated from NN
             let (policy, value)= self.agent.eval(&leaf_node.value().game_state);
 
-            for (valid_move, prior_prob) in policy {
+            for (valid_move, prior_prob) in policy.mask_policy(&leaf_node.value().game_state) {
                 let mut child_state = leaf_node.value().game_state;
                 _ = child_state.take_turn(&valid_move);
                 // init node, evaluate children an take mean of values as action value

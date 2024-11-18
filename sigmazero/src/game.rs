@@ -76,6 +76,8 @@ pub enum GameError<P: Position> {
 pub trait Game<const N: usize>: Default + Clone + Copy + Display {
     const MAX_ACTIONS: usize = N;
     const FEATURES_SHAPE: &'static [i64];
+    const FEATURES_SIZE: i64;
+
 
     type Player: Player;
     type Position: Position;
