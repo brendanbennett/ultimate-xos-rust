@@ -25,10 +25,15 @@ fn format_raw_policy<const N: usize>(raw_policy: &RawPolicy<N>) -> Vec<String> {
 }
 
 fn colour_number(number: f32) -> String {
-    let mut s = format!("{number:3.1}");
+    let mut s = String::new();
+    if number == 1.0 {
+        s = "1.0".to_string();
+    } else {
+        s = format!("{number:3.2}")[1..].to_string();
+    }
     if number > 0.25 {
         s = s.red().to_string()
-    } else if number > 0.05 {
+    } else if number > 0.005 {
         s = s.yellow().to_string()
     }
     s
