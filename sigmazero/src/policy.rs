@@ -1,8 +1,5 @@
 use std::ops::Deref;
 
-use tch::{self, nn, Tensor};
-use rand::prelude::*;
-
 use crate::game::{Game, PositionList};
 
 pub struct Policy<G: Game<N>, const N: usize> {

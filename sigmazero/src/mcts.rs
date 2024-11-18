@@ -2,12 +2,11 @@
 use core::fmt;
 
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
-use crate::game::{self, Game, GameStatus, Position};
-use crate::policy::{self, Agent, RawPolicy};
+use crate::game::{Game, GameStatus};
+use crate::policy::{Agent, RawPolicy};
 use crate::data::ReplayBuffer;
-use itertools::{enumerate, izip, Itertools};
+use itertools::izip;
 use indicatif::ProgressIterator;
-use rand::prelude::*;
 
 pub struct GameNode<G: Game<N>, const N: usize> {
     num_visits: u32,
@@ -71,7 +70,7 @@ pub enum GameNodeState {
     NotExpanded,
 }
 
-type MCTSTree<G: Game<N>, const N: usize> = Tree<GameNode<G, N>>;
+type MCTSTree<G, const N: usize> = Tree<GameNode<G, N>>;
 
 pub struct MCTS<'a, G: Game<N>, A: Agent<G, N>, const N: usize> {
     tree: MCTSTree<G, N>,
