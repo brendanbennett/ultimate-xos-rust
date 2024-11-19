@@ -1,12 +1,11 @@
-
 use core::fmt;
 
-use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
+use crate::data::ReplayBuffer;
 use crate::game::{Game, GameStatus};
 use crate::policy::{Agent, RawPolicy};
-use crate::data::ReplayBuffer;
-use itertools::izip;
+use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
 use indicatif::ProgressIterator;
+use itertools::izip;
 
 pub struct GameNode<G: Game<N>, const N: usize> {
     num_visits: u32,
@@ -94,7 +93,7 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: false };
 
             // Would be calculated from NN
-            let (policy, value)= self.agent.eval(&leaf_node.value().game_state);
+            let (policy, value) = self.agent.eval_game(&leaf_node.value().game_state);
 
             for (valid_move, prior_prob) in policy.mask_policy(&leaf_node.value().game_state) {
                 let mut child_state = leaf_node.value().game_state;
@@ -171,7 +170,8 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
         let mut best_child: Option<NodeRef<'_, GameNode<G, N>>> = None;
         for child in self.tree.root().children() {
             num_sum += child.value().num_visits as f32;
-            if child.value().num_visits > max_num { // always takes first best value
+            if child.value().num_visits > max_num {
+                // always takes first best value
                 max_num = child.value().num_visits;
                 best_child = Some(child);
             }
@@ -179,7 +179,10 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
         }
         policy = policy.map(|n| n / num_sum);
 
-        (best_child.expect("No children found!").value(), RawPolicy::new(policy))
+        (
+            best_child.expect("No children found!").value(),
+            RawPolicy::new(policy),
+        )
     }
 
     pub fn from_root_game_state(root_game_state: G, agent: &'a mut A) -> Self {
@@ -196,7 +199,11 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
     }
 }
 
-pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &mut A, n_games: usize, verbose: bool) -> ReplayBuffer<G, N> {
+pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
+    agent: &mut A,
+    n_games: usize,
+    verbose: bool,
+) -> ReplayBuffer<G, N> {
     let mut buffer = ReplayBuffer::default();
 
     for _ in (0..n_games).progress() {
@@ -225,7 +232,7 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(agent: &mut A, n_ga
             }
 
             policies.push(raw_policy);
-            
+
             if best_child.is_terminal() {
                 if verbose {
                     println!("Result: {:?}", best_child.game_state.status());

@@ -8,14 +8,14 @@ mod small_board;
 
 use colored::Colorize;
 use itertools::Itertools;
-use sigmazero::policy::RawPolicy;
+use sigmazero::data::ReplayBufferTensorData;
+use sigmazero::policy::{RawPolicy, Agent};
 use sigmazero::{game::Game, mcts::self_play};
 use std::mem::size_of_val;
 use std::time::Instant;
 use tch::nn;
 
-use game::XOGame;
-use policies::RandomAgent;
+use policies::{NNAgent, RandomAgent};
 
 fn format_raw_policy<const N: usize>(raw_policy: &RawPolicy<N>) -> Vec<String> {
     raw_policy
@@ -49,11 +49,22 @@ fn main() {
     let start = Instant::now();
     let replay = self_play(&mut agent, n_games, false);
     let duration = start.elapsed();
+    println!(
+        "generated {} Games with size {} bytes in {:?} seconds",
+        n_games,
+        size_of_val(&*(replay.iter().collect_vec())),
+        duration
+    );
 
     let vs = nn::VarStore::new(tch::Device::Cpu);
 
-    let nn_agent = 
+    let mut nn_agent = NNAgent::new(&vs);
 
+    let train_data: ReplayBufferTensorData = replay.into();
+
+    println!("{} {}", train_data.features.get(30), train_data.policy_value.get(30));
+
+    println!("{:?}", *nn_agent.eval_features(&train_data.features.get(30)).0)
 
     // for (game, value, policy) in replay.iter() {
     //     println!("{game}");
@@ -61,13 +72,6 @@ fn main() {
     //     println!("{}", XOGame::displays(format_raw_policy(policy)));
     //     println!("Value: {value}");
     // }
-
-    println!(
-        "generated {} Games with size {} bytes in {:?} seconds",
-        n_games,
-        size_of_val(&*(replay.iter().collect_vec())),
-        duration
-    );
 }
 
 #[cfg(test)]

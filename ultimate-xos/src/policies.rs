@@ -9,7 +9,14 @@ pub struct RandomAgent<R: Rng> {
 }
 
 impl<R: Rng> Agent<XOGame, 81> for RandomAgent<R> {
-    fn eval(&mut self, _: &XOGame) -> (RawPolicy<81>, f32) {
+    fn eval_game(&mut self, _: &XOGame) -> (RawPolicy<81>, f32) {
+        (
+            RawPolicy::new([1.0; XOGame::MAX_ACTIONS]),
+            (self.rng.gen::<f32>() - 0.5) * 0.2,
+        )
+    }
+
+    fn eval_features(&mut self, _: &Tensor) -> (RawPolicy<81>, f32) {
         (
             RawPolicy::new([1.0; XOGame::MAX_ACTIONS]),
             (self.rng.gen::<f32>() - 0.5) * 0.2,
@@ -25,7 +32,7 @@ pub struct NNAgent {
 }
 
 impl NNAgent {
-    fn new(vs: &nn::VarStore) -> Self {
+    pub fn new(vs: &nn::VarStore) -> Self {
         const OUT_SIZE: i64 = 9 * 9 + 1;
         let root = &vs.root();
         Self {
@@ -36,7 +43,7 @@ impl NNAgent {
         }
     }
 
-    fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
+    pub fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
         let xs = xs
             .flat_view()
             .apply(&self.l_1)
@@ -54,8 +61,12 @@ impl NNAgent {
 }
 
 impl Agent<XOGame, 81> for NNAgent {
-    fn eval(&mut self, game: &XOGame) -> (RawPolicy<81>, f32) {
+    fn eval_game(&mut self, game: &XOGame) -> (RawPolicy<81>, f32) {
         let features = game.features();
+        self.eval_features(&features)
+    }
+
+    fn eval_features(&mut self, features: &Tensor) -> (RawPolicy<81>, f32) {
         let (policy_logits, value_logits) = self.forward(&features);
         let policy: Vec<f32> = policy_logits.try_into().expect("Policy conversion from tensor to vec failed!");
         let value = f32::try_from(value_logits.softmax(-1, tch::Kind::Float)).expect("Softmax value failed!");

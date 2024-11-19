@@ -1,4 +1,4 @@
-use crate::{game::Game, policy::RawPolicy};
+use crate::{game::Game, policy::{self, RawPolicy}};
 
 pub struct ReplayBuffer<G: Game<N>, const N: usize> {
     games: Vec<G>,
@@ -50,17 +50,18 @@ impl<G: Game<N>, const N: usize> Default for ReplayBuffer<G, N> {
 }
 
 pub struct ReplayBufferTensorData<> {
-    pub games: tch::Tensor,
-    pub values: tch::Tensor,
-    pub policies: tch::Tensor,
+    pub features: tch::Tensor,
+    pub policy_value: tch::Tensor,
 }
 
 impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensorData {
     fn from(buffer: ReplayBuffer<G, N>) -> Self {
+        let policies = tch::Tensor::stack(&buffer.policies.into_iter().map(|p| p.to_tensor(&[N as i64])).collect::<Vec<_>>(), 0);
+        let values = tch::Tensor::from_slice(&buffer.values).reshape(&[buffer.values.len() as i64, 1]);
+        assert_eq!(policies.size()[1], 81);
         Self {
-            games: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0),
-            values: tch::Tensor::from_slice(&buffer.values),
-            policies: tch::Tensor::stack(&buffer.policies.into_iter().map(|p| p.to_tensor(&[N as i64])).collect::<Vec<_>>(), 0)
+            features: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0),
+            policy_value: tch::Tensor::cat(&[policies, values], 1)
         }
     }
 }
