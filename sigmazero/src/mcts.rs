@@ -92,8 +92,8 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
             };
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: false };
 
-            // Would be calculated from NN
             let (policy, value) = self.agent.eval_game(&leaf_node.value().game_state);
+            println!("mcts policy eval {:?} value {value}", policy);
 
             for (valid_move, prior_prob) in policy.mask_policy(&leaf_node.value().game_state) {
                 let mut child_state = leaf_node.value().game_state;
@@ -202,6 +202,7 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
 pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
     agent: &mut A,
     n_games: usize,
+    search_steps: usize,
     verbose: bool,
 ) -> ReplayBuffer<G, N> {
     let mut buffer = ReplayBuffer::default();
@@ -214,7 +215,7 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
             let mut mcts =
                 MCTS::<G, A, N>::from_root_game_state(games.last().unwrap().clone(), agent);
             // println!("{}", mcts.tree);
-            for _ in 0..800 {
+            for _ in 0..search_steps {
                 let node_chain: Vec<NodeId> = mcts.select();
                 let value = mcts.expand(node_chain.last().copied().unwrap());
                 mcts.backup(node_chain, value);

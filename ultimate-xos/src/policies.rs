@@ -46,6 +46,7 @@ impl NNAgent {
     }
 
     pub fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
+        println!("Before linears {xs}");
         let xs = xs
             .flat_view()
             .apply(&self.l_1)
@@ -55,6 +56,8 @@ impl NNAgent {
             .apply(&self.l_3)
             .relu()
             .apply(&self.l_4);
+
+        println!("After linears {xs}");
 
         let mut ts = xs.split_with_sizes(&[81, 1], -1);
         let value_logits = ts.pop().unwrap();
@@ -70,7 +73,7 @@ impl Agent<XOGame, 81> for NNAgent {
     }
 
     fn eval_features(&mut self, features: &Tensor) -> (RawPolicy<81>, f32) {
-        let (policy_logits, value_logits) = self.forward(&features.reshape([1, -1]));
+        let (policy_logits, value_logits) = self.forward(&features.reshape([1, -1])); // Reshape into a singleton batch
         // println!("policy logits: {}", policy_logits);
         let policy: Vec<f32> = policy_logits.get(0).try_into().expect("Policy conversion from tensor to vec failed!");
         let value = f32::try_from(value_logits.softmax(-1, None)).expect("Value cast into f32 failed!");

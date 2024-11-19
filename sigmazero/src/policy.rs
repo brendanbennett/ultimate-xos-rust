@@ -23,7 +23,7 @@ impl<G: Game<N>, const N: usize> IntoIterator for Policy<G, N> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RawPolicy<const N: usize>([f32; N]);
 
 impl<const N: usize> RawPolicy<{ N }> {
