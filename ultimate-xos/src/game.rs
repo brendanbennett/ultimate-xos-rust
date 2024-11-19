@@ -87,6 +87,7 @@ impl Game<81> for XOGame {
                 .as_slice(),
         )
         .reshape([3, 9, 9])
+        .to_dtype(tch::Kind::Float, false, false)
     }
 }
 

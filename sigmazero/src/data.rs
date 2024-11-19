@@ -1,5 +1,6 @@
 use crate::{game::Game, policy::{self, RawPolicy}};
 
+#[derive(Clone)]
 pub struct ReplayBuffer<G: Game<N>, const N: usize> {
     games: Vec<G>,
     values: Vec<f32>,
@@ -56,11 +57,11 @@ pub struct ReplayBufferTensorData<> {
 
 impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensorData {
     fn from(buffer: ReplayBuffer<G, N>) -> Self {
-        let policies = tch::Tensor::stack(&buffer.policies.into_iter().map(|p| p.to_tensor(&[N as i64])).collect::<Vec<_>>(), 0);
-        let values = tch::Tensor::from_slice(&buffer.values).reshape(&[buffer.values.len() as i64, 1]);
+        let policies = tch::Tensor::stack(&buffer.policies.into_iter().map(|p| p.to_tensor(&[N as i64])).collect::<Vec<_>>(), 0).to_dtype(tch::Kind::Float, false, false);
+        let values = tch::Tensor::from_slice(&buffer.values).reshape(&[buffer.values.len() as i64, 1]).to_dtype(tch::Kind::Float, false, false);
         assert_eq!(policies.size()[1], 81);
         Self {
-            features: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0),
+            features: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0).to_dtype(tch::Kind::Float, false, false),
             policy_value: tch::Tensor::cat(&[policies, values], 1)
         }
     }

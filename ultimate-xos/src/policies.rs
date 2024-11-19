@@ -1,3 +1,5 @@
+use std::sync::PoisonError;
+
 use crate::game::XOGame;
 use rand::prelude::*;
 use sigmazero::game::Game;
@@ -53,9 +55,10 @@ impl NNAgent {
             .apply(&self.l_3)
             .relu()
             .apply(&self.l_4);
+
         let mut ts = xs.split_with_sizes(&[81, 1], -1);
         let value_logits = ts.pop().unwrap();
-        let policy_logits = ts.pop().unwrap();
+        let policy_logits = ts.pop().unwrap().softmax(-1, tch::Kind::Float);
         (policy_logits, value_logits)
     }
 }
@@ -67,9 +70,10 @@ impl Agent<XOGame, 81> for NNAgent {
     }
 
     fn eval_features(&mut self, features: &Tensor) -> (RawPolicy<81>, f32) {
-        let (policy_logits, value_logits) = self.forward(&features);
-        let policy: Vec<f32> = policy_logits.try_into().expect("Policy conversion from tensor to vec failed!");
-        let value = f32::try_from(value_logits.softmax(-1, tch::Kind::Float)).expect("Softmax value failed!");
+        let (policy_logits, value_logits) = self.forward(&features.reshape([1, -1]));
+        // println!("policy logits: {}", policy_logits);
+        let policy: Vec<f32> = policy_logits.get(0).try_into().expect("Policy conversion from tensor to vec failed!");
+        let value = f32::try_from(value_logits.softmax(-1, None)).expect("Value cast into f32 failed!");
         assert_eq!(policy.len(), 81);
         let policy_arr: [f32; 81] = policy.try_into().expect("Policy conversion from vec to array failed!");
         (RawPolicy::new(policy_arr), value)

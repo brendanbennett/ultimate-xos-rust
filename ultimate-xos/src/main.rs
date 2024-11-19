@@ -7,6 +7,7 @@ mod policies;
 mod small_board;
 
 use colored::Colorize;
+use game::XOGame;
 use itertools::Itertools;
 use sigmazero::data::ReplayBufferTensorData;
 use sigmazero::policy::{RawPolicy, Agent};
@@ -44,7 +45,7 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent { rng };
 
-    let n_games = 1;
+    let n_games = 100;
 
     let start = Instant::now();
     let replay = self_play(&mut agent, n_games, false);
@@ -60,18 +61,20 @@ fn main() {
 
     let mut nn_agent = NNAgent::new(&vs);
 
-    let train_data: ReplayBufferTensorData = replay.into();
+    let train_data: ReplayBufferTensorData = replay.clone().into();
 
-    println!("{} {}", train_data.features.get(30), train_data.policy_value.get(30));
+    println!("{} {}", train_data.features.slice(0, 30, 31, 1), train_data.policy_value.slice(0, 30, 31, 1));
 
-    println!("{:?}", *nn_agent.eval_features(&train_data.features.get(30)).0)
+    println!("{:?}", *nn_agent.eval_features(&train_data.features.get(30)).0);
 
-    // for (game, value, policy) in replay.iter() {
-    //     println!("{game}");
-    //     // println!("{}", game.features());
-    //     println!("{}", XOGame::displays(format_raw_policy(policy)));
-    //     println!("Value: {value}");
-    // }
+    let replay_nn = self_play(&mut nn_agent, 1, false);
+
+    for (game, value, policy) in replay.iter() {
+        println!("{game}");
+        // println!("{}", game.features());
+        println!("{}", XOGame::displays(format_raw_policy(policy)));
+        println!("Value: {value}");
+    }
 }
 
 #[cfg(test)]
