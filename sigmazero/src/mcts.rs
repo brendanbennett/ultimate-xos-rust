@@ -92,8 +92,7 @@ impl<'a, G: Game<N>, A: Agent<G, N>, const N: usize> MCTS<'a, G, A, N> {
             };
             leaf_node.value().node_state = GameNodeState::Expanded { is_terminal: false };
 
-            let (policy, value) = self.agent.eval_game(&leaf_node.value().game_state);
-            println!("mcts policy eval {:?} value {value}", policy);
+            let (policy, value) = tch::no_grad(|| self.agent.eval_game(&leaf_node.value().game_state));
 
             for (valid_move, prior_prob) in policy.mask_policy(&leaf_node.value().game_state) {
                 let mut child_state = leaf_node.value().game_state;

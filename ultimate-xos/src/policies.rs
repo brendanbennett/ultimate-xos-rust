@@ -40,13 +40,12 @@ impl NNAgent {
         Self {
             l_1: nn::linear(root / "l_1", XOGame::FEATURES_SIZE, 256, Default::default()),
             l_2: nn::linear(root / "l_2", 256, 128, Default::default()),
-            l_3: nn::linear(root / "l_3", 128, 64, Default::default()),
-            l_4: nn::linear(root / "l_4", 64, OUT_SIZE, Default::default()),
+            l_3: nn::linear(root / "l_3", 128, 96, Default::default()),
+            l_4: nn::linear(root / "l_4", 96, OUT_SIZE, Default::default()),
         }
     }
 
     pub fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
-        println!("Before linears {xs}");
         let xs = xs
             .flat_view()
             .apply(&self.l_1)
@@ -56,8 +55,6 @@ impl NNAgent {
             .apply(&self.l_3)
             .relu()
             .apply(&self.l_4);
-
-        println!("After linears {xs}");
 
         let mut ts = xs.split_with_sizes(&[81, 1], -1);
         let value_logits = ts.pop().unwrap();

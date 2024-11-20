@@ -48,10 +48,10 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent { rng };
 
-    let n_games = 1;
+    let n_games = 100;
 
     let start = Instant::now();
-    let replay = self_play(&mut agent, n_games, 100,false);
+    let replay = self_play(&mut agent, n_games, 800,false);
     let duration = start.elapsed();
     println!(
         "generated {} Games with size {} bytes in {:?} seconds",
@@ -76,7 +76,7 @@ fn main() {
     println!("Training on {} batches of {}", num_batches, batch_size);
     for epoch in 0..epochs {
         progress_bar.inc(1);
-        let mut total_epoch_loss: f32 = 0.0;
+        let mut total_epoch_loss: [f32; 2] = [0.0, 0.0];
         let mut data_iterator = tch::data::Iter2::new(&train_data.features, &train_data.policy_value, batch_size);
         data_iterator.shuffle();
         for (features, policy_values) in data_iterator {
@@ -87,15 +87,19 @@ fn main() {
 
             let value_loss = value_est.mse_loss(&value_target, tch::Reduction::Mean);
             // KL-divergence for prob distributions
-            let policy_loss = (&policy_target * (&policy_target / &policy_est).log()).sum(Kind::Float);
+            let policy_loss = policy_est.log().kl_div(&policy_target, tch::Reduction::Mean, false);
+
+            total_epoch_loss[0] += policy_loss.double_value(&[]) as f32;
+            total_epoch_loss[1] += value_loss.double_value(&[]) as f32;
+
             let loss = value_loss + policy_loss;
-            println!("loss: {loss}");
-            total_epoch_loss = loss.double_value(&[]) as f32;
 
             opt.backward_step(&loss);
         }
-        progress_bar.set_message(format!("Loss: {}", total_epoch_loss/(num_batches as f32)));
+        progress_bar.set_message(format!("Policy loss: {}, Value loss: {}", total_epoch_loss[0]/(num_batches as f32), total_epoch_loss[1]/(num_batches as f32)));
     }
+
+    vs.save("model_0.ot".to_string()).expect("Save Failed");
 
     // for (game, value, policy) in replay.iter() {
     //     println!("{game}");
