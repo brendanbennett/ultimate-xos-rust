@@ -1,10 +1,12 @@
+use std::path::Path;
 use std::sync::PoisonError;
 
 use crate::game::XOGame;
 use rand::prelude::*;
 use sigmazero::game::Game;
 use sigmazero::policy::{Agent, RawPolicy};
-use tch::{nn, Tensor};
+use tch::nn::VarStore;
+use tch::{nn, Device, TchError, Tensor};
 
 pub struct RandomAgent<R: Rng> {
     pub rng: R,
@@ -60,6 +62,12 @@ impl NNAgent {
         let value_logits = ts.pop().unwrap();
         let policy_logits = ts.pop().unwrap().softmax(-1, tch::Kind::Float);
         (policy_logits, value_logits)
+    }
+
+    pub fn from_weights(path_to_weights: &Path, device: Device) -> Result<Self, TchError> {
+        let mut vs = VarStore::new(device);
+        vs.load(path_to_weights)?;
+        Ok(Self::new(&vs))
     }
 }
 
