@@ -4,7 +4,7 @@ use crate::data::ReplayBuffer;
 use crate::game::{Game, GameStatus};
 use crate::policy::{Agent, RawPolicy};
 use ego_tree::{NodeId, NodeMut, NodeRef, Tree};
-use indicatif::ProgressIterator;
+use indicatif::{ProgressBar, ProgressIterator, ProgressStyle};
 use itertools::izip;
 
 pub struct GameNode<G: Game<N>, const N: usize> {
@@ -205,8 +205,11 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
     verbose: bool,
 ) -> ReplayBuffer<G, N> {
     let mut buffer = ReplayBuffer::default();
-
-    for _ in (0..n_games).progress() {
+    let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {bar:40} {pos}/{len} games").unwrap();
+    if verbose {
+        println!("Playing {} self-play games", n_games);
+    }
+    for _ in (0..n_games).progress_with_style(progress_style) {
         let mut games = vec![G::default()];
         let mut values = Vec::<f32>::new();
         let mut policies = Vec::<RawPolicy<N>>::new();

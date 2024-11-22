@@ -51,7 +51,7 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent { rng };
 
-    let n_games = 5;
+    let n_games = 100;
 
     let start = Instant::now();
     let replay = self_play(&mut agent, n_games, 400, false);
@@ -65,7 +65,7 @@ fn main() {
 
     // Start training NN
     let batch_size = 32;
-    let epochs = 100;
+    let epochs = 1000;
     let vs = nn::VarStore::new(tch::Device::Cpu);
     train_on_replay::<XONNAgent, XOGame, 81>(&vs, &replay, batch_size, epochs);
     vs.save("model_0.ot".to_string()).expect("Save Failed");
