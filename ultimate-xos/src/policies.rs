@@ -4,9 +4,8 @@ use std::sync::PoisonError;
 use crate::game::XOGame;
 use rand::prelude::*;
 use sigmazero::game::Game;
-use sigmazero::policy::{Agent, RawPolicy};
-use tch::nn::VarStore;
-use tch::{nn, Device, TchError, Tensor};
+use sigmazero::policy::{Agent, RawPolicy, NNAgent};
+use tch::{nn, Tensor};
 
 pub struct RandomAgent<R: Rng> {
     pub rng: R,
@@ -28,15 +27,15 @@ impl<R: Rng> Agent<XOGame, 81> for RandomAgent<R> {
     }
 }
 
-pub struct NNAgent {
+pub struct XONNAgent {
     l_1: nn::Linear,
     l_2: nn::Linear,
     l_3: nn::Linear,
     l_4: nn::Linear,
 }
 
-impl NNAgent {
-    pub fn new(vs: &nn::VarStore) -> Self {
+impl NNAgent<XOGame, 81> for XONNAgent {
+    fn new(vs: &nn::VarStore) -> Self {
         const OUT_SIZE: i64 = 9 * 9 + 1;
         let root = &vs.root();
         Self {
@@ -47,7 +46,7 @@ impl NNAgent {
         }
     }
 
-    pub fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
+    fn forward(&self, xs: &Tensor) -> (Tensor, Tensor) {
         let xs = xs
             .flat_view()
             .apply(&self.l_1)
@@ -63,15 +62,9 @@ impl NNAgent {
         let policy_logits = ts.pop().unwrap().softmax(-1, tch::Kind::Float);
         (policy_logits, value_logits)
     }
-
-    pub fn from_weights(path_to_weights: &Path, device: Device) -> Result<Self, TchError> {
-        let mut vs = VarStore::new(device);
-        vs.load(path_to_weights)?;
-        Ok(Self::new(&vs))
-    }
 }
 
-impl Agent<XOGame, 81> for NNAgent {
+impl Agent<XOGame, 81> for XONNAgent {
     fn eval_game(&mut self, game: &XOGame) -> (RawPolicy<81>, f32) {
         let features = game.features();
         self.eval_features(&features)

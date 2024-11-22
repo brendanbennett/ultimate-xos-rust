@@ -1,6 +1,7 @@
 use std::ops::Deref;
 
-use tch::Tensor;
+use std::path::Path;
+use tch::{nn, Tensor, Device, TchError};
 
 use crate::game::{Game, PositionList};
 
@@ -62,18 +63,7 @@ pub trait Agent<G: Game<N>, const N: usize> {
     fn eval_features(&mut self, features: &Tensor) -> (RawPolicy<N>, f32);
 }
 
-// pub struct UltimateXONNPolicy {
-//     linear_1: nn::linear,
-//     linear_2: nn::linear,
-//     linear_3: nn::linear,
-// }
-
-// impl UltimateXONNPolicy {
-//     fn new()
-// }
-
-// impl Policy for UltimateXONNPolicy {
-//     fn eval(game: Game) -> ([f32, 81], f32) {
-
-//     }
-// }
+pub trait NNAgent<G: Game<N>, const N:usize>: Agent<G, N> {
+    fn new(vs: &nn::VarStore) -> Self;
+    fn forward(&self, xs: &Tensor) -> (Tensor, Tensor);
+}
