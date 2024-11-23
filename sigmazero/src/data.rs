@@ -1,4 +1,5 @@
 use crate::{game::Game, policy::{self, RawPolicy}};
+use tch::{Device, Kind, Tensor, IndexOp};
 
 #[derive(Clone)]
 pub struct ReplayBuffer<G: Game<N>, const N: usize> {
@@ -35,8 +36,8 @@ impl<G: Game<N>, const N: usize> ReplayBuffer<G, N> {
         self.policies.append(policies);
     }
 
-    pub fn to_tensor_data() {
-
+    pub fn len(&self) -> usize {
+        self.games.len()
     }
 }
 
@@ -50,7 +51,7 @@ impl<G: Game<N>, const N: usize> Default for ReplayBuffer<G, N> {
     }
 }
 
-pub struct ReplayBufferTensorData<> {
+pub struct ReplayBufferTensorData {
     pub features: tch::Tensor,
     pub policy_value: tch::Tensor,
 }
@@ -64,5 +65,27 @@ impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensor
             features: tch::Tensor::stack(&buffer.games.into_iter().map(|g| g.features()).collect::<Vec<_>>(), 0).to_dtype(tch::Kind::Float, false, false),
             policy_value: tch::Tensor::cat(&[policies, values], 1)
         }
+    }
+}
+
+impl ReplayBufferTensorData {
+    pub fn random_split(&self, fraction: f32) -> (Self, Self) {
+        let n = self.features.size()[0];
+        let left_split_length = (n as f32 * fraction).ceil() as i64;
+        let index = Tensor::randperm( n, (Kind::Int64, Device::Cpu));
+        let mut features = self.features.detach_copy();
+        let mut policy_value = self.policy_value.detach_copy();
+        features = features.index_select(0, &index);
+        policy_value = policy_value.index_select(0, &index);
+        (
+            Self {
+                features: features.i(..left_split_length),
+                policy_value: policy_value.i(..left_split_length),
+            },
+            Self {
+                features: features.i(left_split_length..),
+                policy_value: policy_value.i(left_split_length..),
+            }
+        )
     }
 }

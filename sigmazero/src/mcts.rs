@@ -1,4 +1,5 @@
 use core::fmt;
+use std::time::Instant;
 
 use crate::data::ReplayBuffer;
 use crate::game::{Game, GameStatus};
@@ -202,14 +203,13 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
     agent: &mut A,
     n_games: usize,
     search_steps: usize,
-    verbose: bool,
+    show_games: bool,
 ) -> ReplayBuffer<G, N> {
     let mut buffer = ReplayBuffer::default();
     let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {bar:40} {pos}/{len} games").unwrap();
-    if verbose {
-        println!("Playing {} self-play games", n_games);
-    }
-    for _ in (0..n_games).progress_with_style(progress_style) {
+    println!("Playing {} self-play games", n_games);
+    let start = Instant::now();
+    for _ in (0..n_games).progress_with_style(progress_style).with_finish(indicatif::ProgressFinish::Abandon) {
         let mut games = vec![G::default()];
         let mut values = Vec::<f32>::new();
         let mut policies = Vec::<RawPolicy<N>>::new();
@@ -229,7 +229,7 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
 
             let (best_child, raw_policy) = mcts.select_best_child();
 
-            if verbose {
+            if show_games {
                 print!("{esc}c", esc = 27 as char);
                 println!("{}", best_child.game_state);
             }
@@ -237,7 +237,7 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
             policies.push(raw_policy);
 
             if best_child.is_terminal() {
-                if verbose {
+                if show_games {
                     println!("Result: {:?}", best_child.game_state.status());
                 }
                 let final_value: f32 = best_child.game_state.status().into();
@@ -255,5 +255,13 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
         }
         buffer.append(&mut games, &mut values, &mut policies);
     }
+    let duration = start.elapsed();
+    println!(
+        "generated {} Games with {} states in {:.2} seconds",
+        n_games,
+        buffer.len(),
+        duration.as_secs_f32()
+    );
+
     buffer
 }

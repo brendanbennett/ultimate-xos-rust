@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use std::path::Path;
 use tch::{nn, Tensor, Device, TchError};
+use colored::Colorize;
 
 use crate::game::{Game, PositionList};
 
@@ -48,6 +49,29 @@ impl<const N: usize> RawPolicy<{ N }> {
 
     pub fn to_tensor(&self, shape: &[i64]) -> Tensor {
         Tensor::from_slice(&self.0).reshape(shape)
+    }
+
+    pub fn format_to_print(&self) -> Vec<String> {
+        self
+            .to_vec()
+            .iter()
+            .map(|n| Self::colour_number(*n))
+            .collect()
+    }
+
+    fn colour_number(number: f32) -> String {
+        let mut s = String::new();
+        if number == 1.0 {
+            s = "1.0".to_string();
+        } else {
+            s = format!("{number:3.2}")[1..].to_string();
+        }
+        if number > 0.25 {
+            s = s.red().to_string()
+        } else if number > 0.005 {
+            s = s.yellow().to_string()
+        }
+        s
     }
 }
 

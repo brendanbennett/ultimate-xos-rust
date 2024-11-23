@@ -1,8 +1,9 @@
 use std::ops::Index;
 
 use crate::{game::{Game, GameStatus, Player}, mcts::MCTS, policy::Agent};
-use indicatif::ProgressIterator;
+use indicatif::{ProgressIterator, ProgressStyle};
 use ego_tree::NodeId;
+use tch::display::PrinterOptions;
 
 #[derive(Debug, Default)]
 pub struct EvaluationResults {
@@ -14,7 +15,8 @@ pub struct EvaluationResults {
 pub fn evaluate_agents<G: Game<N>, const N: usize, A1: Agent<G, N>, A2: Agent<G, N>>(agent1: &mut A1, agent2: &mut A2, n_games: usize, search_steps: usize, verbose: bool) -> EvaluationResults {
     let mut results = EvaluationResults::default();
 
-    for _ in (0..n_games).progress() {
+    let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {bar:40} {pos}/{len} games").unwrap();
+    for _ in (0..n_games).progress_with_style(progress_style).with_finish(indicatif::ProgressFinish::Abandon) {
         let mut game = G::default();
 
         loop {
@@ -48,7 +50,10 @@ pub fn evaluate_agents<G: Game<N>, const N: usize, A1: Agent<G, N>, A2: Agent<G,
                             }
                         }
                         
-                        game = mcts2.select_best_child().0.game_state.clone();
+                        let (best_child, policy) = mcts2.select_best_child();
+                        // println!("{}", game);
+                        // println!("Agent 2 policy\n{}", G::displays(policy.format_to_print()));
+                        game = best_child.game_state.clone();
                     };
 
                     if verbose {
