@@ -1,7 +1,9 @@
-use crate::{game::Game, policy::{self, RawPolicy}};
-use tch::{Device, Kind, Tensor, IndexOp};
+use std::path::Path;
 
-#[derive(Clone)]
+use crate::{game::Game, policy::{self, RawPolicy}};
+use tch::{Device, Kind, Tensor, IndexOp, TchError};
+
+#[derive(Clone, Debug)]
 pub struct ReplayBuffer<G: Game<N>, const N: usize> {
     games: Vec<G>,
     values: Vec<f32>,
@@ -87,5 +89,19 @@ impl ReplayBufferTensorData {
                 policy_value: policy_value.i(left_split_length..),
             }
         )
+    }
+
+    pub fn save_to_file(&self, path: &Path) -> Result<(), TchError> {
+        Tensor::save_multi(&[("features", &self.features), ("policy_value", &self.policy_value)], path)
+    }
+
+    pub fn load_from_file(path: &Path) -> Result<Self, TchError> {
+        let tensors = Tensor::load_multi(path)?;
+        let features = tensors.iter().find(|(name, _)| name == "features").expect(&format!("`features` tensor not found in {:?}", path)).1.shallow_clone();
+        let policy_value = tensors.iter().find(|(name, _)| name == "policy_value").expect(&format!("`policy_value` tensor not found in {:?}", path)).1.shallow_clone();
+        Ok(Self {
+            features,
+            policy_value,
+        })
     }
 }
