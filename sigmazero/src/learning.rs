@@ -11,7 +11,7 @@ use tch::nn::{self, OptimizerConfig, VarStore};
 
 pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
     vs: &VarStore,
-    replay_buffer: &ReplayBuffer<G, N>,
+    replay_data: &ReplayBufferTensorData,
     batch_size: usize,
     epochs: usize,
     train_fraction: f32,
@@ -22,7 +22,6 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
         .build(&vs, 1e-3)
         .expect("Optimiser initialisation failed!");
 
-    let replay_data: ReplayBufferTensorData = replay_buffer.clone().into();
     let (train_data, test_data) = replay_data.random_split(train_fraction);
     let progress_bar = ProgressBar::new(epochs as u64);
     progress_bar.set_style(

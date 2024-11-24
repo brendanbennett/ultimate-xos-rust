@@ -104,4 +104,8 @@ impl ReplayBufferTensorData {
             policy_value,
         })
     }
+
+    pub fn len(&self) -> usize {
+        self.features.size()[0] as usize
+    }
 }
