@@ -1,6 +1,7 @@
 use core::fmt;
+use std::sync::{Arc, Mutex};
 use std::time::Instant;
-
+use rayon::prelude::*;
 use crate::data::ReplayBuffer;
 use crate::game::{Game, GameStatus};
 use crate::policy::{Agent, RawPolicy};
@@ -204,28 +205,31 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
     n_games: usize,
     search_steps: usize,
     show_games: bool,
+    n_threads: usize,
 ) -> ReplayBuffer<G, N> {
-    let mut buffer = ReplayBuffer::default();
+    if n_threads < 1 {
+        panic!("n_threads must be at least 1!")
+    }
+    let buffer = Arc::new(Mutex::new(ReplayBuffer::default()));
+    let agent = Arc::new(Mutex::new(agent));
     let progress_style = ProgressStyle::with_template("[{elapsed_precise}] {bar:40} {pos}/{len} games").unwrap();
-    println!("Playing {} self-play games", n_games);
+    let progress_bar = ProgressBar::new(n_games as u64)
+        .with_style(progress_style)
+        .with_finish(indicatif::ProgressFinish::Abandon)
+    println!("Playing {} self-play games with {} thread{}", n_games, n_threads, if n_threads == 1 {""} else {"s"});
     let start = Instant::now();
-    for _ in (0..n_games).progress_with_style(progress_style).with_finish(indicatif::ProgressFinish::Abandon) {
+    (0..n_games).into_par_iter().for_each(|_| {
         let mut games = vec![G::default()];
         let mut values = Vec::<f32>::new();
         let mut policies = Vec::<RawPolicy<N>>::new();
         loop {
             let mut mcts =
                 MCTS::<G, A, N>::from_root_game_state(games.last().unwrap().clone(), agent);
-            // println!("{}", mcts.tree);
             for _ in 0..search_steps {
                 let node_chain: Vec<NodeId> = mcts.select();
                 let value = mcts.expand(node_chain.last().copied().unwrap());
                 mcts.backup(node_chain, value);
             }
-
-            // for child in mcts.tree.root().children() {
-            //     println!("{} has N={}", child.value().previous_action.clone().map_or("Root".to_string(), |p| p.to_string()), child.value().num_visits)
-            // }
 
             let (best_child, raw_policy) = mcts.select_best_child();
 
@@ -253,15 +257,25 @@ pub fn self_play<G: Game<N>, A: Agent<G, N>, const N: usize>(
             }
             games.push(best_child.game_state);
         }
-        buffer.append(&mut games, &mut values, &mut policies);
-    }
+        let mut buffer_lock = buffer.lock().unwrap();
+        buffer_lock.append(&mut games, &mut values, &mut policies);
+        drop(buffer_lock);
+
+        progress_bar.inc(1);
+    });
     let duration = start.elapsed();
+
+    progress_bar.finish();
+    let final_buffer = Arc::try_unwrap(buffer)
+        .unwrap()
+        .into_inner()
+        .unwrap();
     println!(
         "generated {} Games with {} states in {:.2} seconds",
         n_games,
-        buffer.len(),
+        final_buffer.len(),
         duration.as_secs_f32()
     );
 
-    buffer
+    final_buffer
 }

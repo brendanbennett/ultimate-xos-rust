@@ -1,4 +1,4 @@
-use std::fmt::{self, Display};
+use std::fmt::{self, Debug, Display};
 use std::ops::{Deref, DerefMut};
 
 pub trait Position: PartialEq + Clone + Copy + fmt::Debug + fmt::Display + From<usize> + Into<usize> {
@@ -73,7 +73,7 @@ pub enum GameError<P: Position> {
     GameOver,
 }
 
-pub trait Game<const N: usize>: Default + Clone + Copy + Display {
+pub trait Game<const N: usize>: Default + Clone + Copy + Display + Debug {
     const MAX_ACTIONS: usize = N;
     const FEATURES_SHAPE: &'static [i64];
     const FEATURES_SIZE: i64;
