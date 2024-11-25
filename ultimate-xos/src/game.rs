@@ -3,7 +3,7 @@ use std::fmt;
 
 pub use crate::board::XOPlayer;
 use crate::board::{BoardDisplayer, MainBoard, XOPosition, XOPositionList};
-use sigmazero::game::{Game, GameError, GameStatus};
+use sigmazero::{game::{Game, GameError, GameStatus}, policy::RawPolicy};
 
 pub type XOGameStatus = GameStatus<XOPlayer>;
 
@@ -88,6 +88,11 @@ impl Game<81> for XOGame {
         )
         .reshape([3, 9, 9])
         .to_dtype(tch::Kind::Float, false, false)
+    }
+
+    fn augmented_with_raw_policy(&self, raw_policy: &RawPolicy<81>) -> (Vec<Self>, Vec<RawPolicy<81>>) {
+        let aug_games = vec![self.clone()];
+        
     }
 }
 

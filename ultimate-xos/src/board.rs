@@ -204,6 +204,20 @@ impl MainBoard {
         }
         arr
     }
+
+    fn rotated90(&self) -> Self {
+
+    }
+
+    pub fn augmented(&self) -> Vec<Self> {
+        let mut augmented = vec![self.clone()];
+        
+        for r in 1..4 {
+            augmented.push(augmented[r-1].rotated90());
+        }
+
+        augmented
+    }
 }
 
 impl fmt::Display for MainBoard {

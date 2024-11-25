@@ -1,7 +1,11 @@
 use std::fmt::{self, Display};
 use std::ops::{Deref, DerefMut};
 
-pub trait Position: PartialEq + Clone + Copy + fmt::Debug + fmt::Display + From<usize> + Into<usize> {
+use crate::policy::RawPolicy;
+
+pub trait Position:
+    PartialEq + Clone + Copy + fmt::Debug + fmt::Display + From<usize> + Into<usize>
+{
     fn new(x: u8, y: u8) -> Self;
     fn is_valid(&self) -> bool;
 }
@@ -36,8 +40,8 @@ pub trait Player: fmt::Debug + Clone + Copy + PartialEq + Default + fmt::Display
 
 #[derive(Debug, Clone, Copy)]
 pub enum GameStatus<P: Player> {
-    InProgress {player: P},
-    Won {player: P},
+    InProgress { player: P },
+    Won { player: P },
     Draw,
 }
 
@@ -63,7 +67,9 @@ impl<P: Player> From<&GameStatus<P>> for f32 {
 
 impl<P: Player> Default for GameStatus<P> {
     fn default() -> Self {
-        Self::InProgress { player: P::default() }
+        Self::InProgress {
+            player: P::default(),
+        }
     }
 }
 
@@ -78,13 +84,16 @@ pub trait Game<const N: usize>: Default + Clone + Copy + Display {
     const FEATURES_SHAPE: &'static [i64];
     const FEATURES_SIZE: i64;
 
-
     type Player: Player;
     type Position: Position;
 
-    fn take_turn(&mut self, position: &Self::Position) -> Result<GameStatus<Self::Player>, GameError<Self::Position>>;
+    fn take_turn(
+        &mut self,
+        position: &Self::Position,
+    ) -> Result<GameStatus<Self::Player>, GameError<Self::Position>>;
     fn valid_moves(&self) -> PositionList<Self::Position>;
     fn status(&self) -> &GameStatus<Self::Player>;
     fn displays(items: Vec<String>) -> impl Display;
     fn features(&self) -> tch::Tensor;
+    fn augmented_with_raw_policy(&self, raw_policy: &RawPolicy<N>) -> (Vec<Self>, Vec<RawPolicy<N>>);
 }
