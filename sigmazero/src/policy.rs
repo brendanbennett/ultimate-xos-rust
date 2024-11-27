@@ -73,6 +73,11 @@ impl<const N: usize> RawPolicy<{ N }> {
         }
         s
     }
+
+    #[cfg(test)]
+    pub fn get_arr(&self) -> [f32; N] {
+        self.0
+    }
 }
 
 impl<const N: usize> Deref for RawPolicy<N> {

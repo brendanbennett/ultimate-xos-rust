@@ -206,7 +206,8 @@ impl MainBoard {
     }
 
     fn rotated90(&self) -> Self {
-
+        // Temporary
+        return self.clone()
     }
 
     pub fn augmented(&self) -> Vec<Self> {

@@ -91,13 +91,78 @@ impl Game<81> for XOGame {
     }
 
     fn augmented_with_raw_policy(&self, raw_policy: &RawPolicy<81>) -> (Vec<Self>, Vec<RawPolicy<81>>) {
-        let aug_games = vec![self.clone()];
-        
+        let aug_boards = self.board.augmented();
+        let mut aug_games = vec![self.clone()];
+        let aug_policies = Self::augment_raw_policy(raw_policy);
+        for r in 1..4 {
+            aug_games.push(Self { board: aug_boards[r], status: self.status.clone() })
+        }
+
+        (aug_games, aug_policies)
+    }
+}
+
+impl XOGame {
+    fn augment_raw_policy(raw_policy: &RawPolicy<81>) -> Vec<RawPolicy<81>>{
+        let mut aug_policies = vec![raw_policy.clone()];
+        for r in 1..4 {
+            aug_policies.push(Self::rotate_raw_policy_90(&aug_policies[r-1]));
+        }
+        aug_policies
+    }
+
+    fn rotate_raw_policy_90(raw_policy: &RawPolicy<81>) -> RawPolicy<81> {
+        let mut rot_policy = [0.0f32; 81];
+        for x in 0..9 {
+            for y in 0..9 {
+                rot_policy[x + 9 * y] = raw_policy[y + 9 * (8-x)]
+            }
+        }
+        RawPolicy::new(rot_policy)
     }
 }
 
 impl fmt::Display for XOGame {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.board)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rotation() {
+        // Create a test grid where each cell contains its index (0 to 80)
+        let mut initial = [0.0f32; 81];
+        for i in 0..81 {
+            initial[i] = i as f32;
+        }
+        let policy = RawPolicy::new(initial);
+
+        println!("Original grid:");
+
+        let rotated = XOGame::rotate_raw_policy_90(&policy);
+        println!("Rotated grid:");
+
+        // Test specific positions
+        // After 90-degree clockwise rotation:
+        // - (0,0) -> (8,0) : 0 should move to index 8
+        // - (8,0) -> (8,8) : 8 should move to index 80
+        // - (0,8) -> (0,0) : 72 should move to index 0
+        // - (8,8) -> (0,8) : 80 should move to index 72
+        assert_eq!(rotated.get_arr(8), 0.0);    // top-left -> top-right
+        assert_eq!(rotated.0[80], 8.0);   // top-right -> bottom-right
+        assert_eq!(rotated.0[0], 72.0);   // bottom-left -> top-left
+        assert_eq!(rotated.0[72], 80.0);  // bottom-right -> bottom-left
+
+        // Test middle cell - should stay the same value
+        assert_eq!(rotated.0[40], 40.0);  // center should be unchanged
+
+        // Test a few more positions
+        assert_eq!(rotated.0[7], 9.0);    // (1,0) -> (7,0)
+        assert_eq!(rotated.0[16], 1.0);   // (0,1) -> (8,1)
+        assert_eq!(rotated.0[73], 79.0);  // (7,8) -> (1,8)
     }
 }
