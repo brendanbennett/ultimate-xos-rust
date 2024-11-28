@@ -130,6 +130,8 @@ impl fmt::Display for XOGame {
 
 #[cfg(test)]
 mod tests {
+    use crate::policies;
+
     use super::*;
 
     #[test]
@@ -152,17 +154,26 @@ mod tests {
         // - (8,0) -> (8,8) : 8 should move to index 80
         // - (0,8) -> (0,0) : 72 should move to index 0
         // - (8,8) -> (0,8) : 80 should move to index 72
-        assert_eq!(rotated.get_arr(8), 0.0);    // top-left -> top-right
-        assert_eq!(rotated.0[80], 8.0);   // top-right -> bottom-right
-        assert_eq!(rotated.0[0], 72.0);   // bottom-left -> top-left
-        assert_eq!(rotated.0[72], 80.0);  // bottom-right -> bottom-left
+        assert_eq!(rotated[8], 0.0);    // top-left -> top-right
+        assert_eq!(rotated[80], 8.0);   // top-right -> bottom-right
+        assert_eq!(rotated[0], 72.0);   // bottom-left -> top-left
+        assert_eq!(rotated[72], 80.0);  // bottom-right -> bottom-left
 
         // Test middle cell - should stay the same value
-        assert_eq!(rotated.0[40], 40.0);  // center should be unchanged
+        assert_eq!(rotated[40], 40.0);  // center should be unchanged
 
         // Test a few more positions
-        assert_eq!(rotated.0[7], 9.0);    // (1,0) -> (7,0)
-        assert_eq!(rotated.0[16], 1.0);   // (0,1) -> (8,1)
-        assert_eq!(rotated.0[73], 79.0);  // (7,8) -> (1,8)
+        assert_eq!(rotated[17], 1.0);   // (1,0) -> (8,1)
+        assert_eq!(rotated[7], 9.0);    // (0,1) -> (7,0)
+        assert_eq!(rotated[63], 79.0);  // (7,8) -> (0,7)
+        assert_eq!(rotated[10], 64.0);  // (1,7) -> (1,1)
+
+        assert_eq!(policy, XOGame::rotate_raw_policy_90(
+            &XOGame::rotate_raw_policy_90(
+                &XOGame::rotate_raw_policy_90(
+                    &XOGame::rotate_raw_policy_90(&policy)
+                )
+            )
+        ));
     }
 }

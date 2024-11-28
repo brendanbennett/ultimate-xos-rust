@@ -25,7 +25,7 @@ impl<G: Game<N>, const N: usize> IntoIterator for Policy<G, N> {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct RawPolicy<const N: usize>([f32; N]);
 
 impl<const N: usize> RawPolicy<{ N }> {
@@ -72,11 +72,6 @@ impl<const N: usize> RawPolicy<{ N }> {
             s = s.yellow().to_string()
         }
         s
-    }
-
-    #[cfg(test)]
-    pub fn get_arr(&self) -> [f32; N] {
-        self.0
     }
 }
 

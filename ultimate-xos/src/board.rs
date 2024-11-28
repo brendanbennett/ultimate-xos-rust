@@ -41,6 +41,10 @@ impl XOPosition {
             y: small_pos.y + 3 * large_pos.y,
         }
     }
+    
+    fn rot_90(&self) -> Self {
+        Self::new(8-self.y, self.x)
+    }
 }
 
 impl From<usize> for XOPosition {
@@ -205,16 +209,26 @@ impl MainBoard {
         arr
     }
 
-    fn rotated90(&self) -> Self {
+    fn rotated_90(&self) -> Self {
+        let mut rotated = Self::default();
         // Temporary
-        return self.clone()
+        for x in 0..9 {
+            for y in 0..9 {
+                let pos = XOPosition::new(x, y);
+                if let Some(player) = self.get_cell(&pos) {
+                    rotated.set_cell(&pos.rot_90(), player);
+                }
+            }
+        }
+        rotated.last_move = self.last_move.map(|p| p.rot_90());
+        rotated
     }
 
     pub fn augmented(&self) -> Vec<Self> {
         let mut augmented = vec![self.clone()];
         
         for r in 1..4 {
-            augmented.push(augmented[r-1].rotated90());
+            augmented.push(augmented[r-1].rotated_90());
         }
 
         augmented

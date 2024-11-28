@@ -24,11 +24,17 @@ fn main() {
     let rng = rand::thread_rng();
     let mut agent = RandomAgent { rng };
 
-    let n_games = 1000;
+    let n_games = 1;
 
     let replay = self_play(&mut agent, n_games, 400, false);
+    let replay_augmented = replay.augmented();
+    println!("Replay augmented from {} to {}", replay.len(), replay_augmented.len());
+    for i in 0..4 {
+        let print_idx = i+16;
+        println!("{}\n{}\n{}", replay_augmented.games[print_idx], XOGame::displays(replay_augmented.policies[print_idx].format_to_print()), replay_augmented.values[print_idx]);
+    }
     let replay_data: ReplayBufferTensorData = replay.into();
-    replay_data.save_to_file(Path::new("random_games.ot")).unwrap();
+    // replay_data.save_to_file(Path::new("random_games_2.ot")).unwrap();
     // let replay_data = ReplayBufferTensorData::load_from_file(Path::new("random_games.ot")).unwrap();
 
     // Start training NN

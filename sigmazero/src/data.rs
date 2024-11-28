@@ -8,9 +8,9 @@ use tch::{Device, IndexOp, Kind, TchError, Tensor};
 
 #[derive(Clone, Debug)]
 pub struct ReplayBuffer<G: Game<N>, const N: usize> {
-    games: Vec<G>,
-    values: Vec<f32>,
-    policies: Vec<RawPolicy<N>>,
+    pub games: Vec<G>,
+    pub values: Vec<f32>,
+    pub policies: Vec<RawPolicy<N>>,
 }
 
 impl<G: Game<N>, const N: usize> ReplayBuffer<G, N> {
@@ -61,12 +61,14 @@ impl<G: Game<N>, const N: usize> ReplayBuffer<G, N> {
         self.games.len()
     }
 
-    pub fn augment(&mut self) {
+    pub fn augmented(&self) -> Self {
+        let mut augmented = Self::default();
         for i in 0..self.games.len() {
             let (mut aug_games, mut aug_policies) = self.games[i].augmented_with_raw_policy(&self.policies[i]);
             let mut aug_values = vec![self.values[i]; aug_games.len()];
-            self.append(&mut aug_games, &mut aug_values, &mut aug_policies);
+            augmented.append(&mut aug_games, &mut aug_values, &mut aug_policies);
         }
+        augmented
     }
 }
 
