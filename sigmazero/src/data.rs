@@ -171,4 +171,9 @@ impl ReplayBufferTensorData {
     pub fn len(&self) -> usize {
         self.features.size()[0] as usize
     }
+
+    pub fn to_device(&mut self, device: tch::Device) {
+        self.features = self.features.to(device);
+        self.policy_value = self.policy_value.to(device);
+    }
 }

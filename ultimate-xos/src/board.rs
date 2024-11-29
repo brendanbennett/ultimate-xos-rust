@@ -45,6 +45,11 @@ impl XOPosition {
     fn rot_90(&self) -> Self {
         Self::new(8-self.y, self.x)
     }
+    
+    /// Reflects the x coordinate, y coordinate is unchanged
+    fn reflect_vertical(&self) -> Self {
+        Self::new(8-self.x, self.y)
+    }
 }
 
 impl From<usize> for XOPosition {
@@ -224,13 +229,35 @@ impl MainBoard {
         rotated
     }
 
+    fn reflected_vertical(&self) -> Self {
+        let mut reflected = Self::default();
+        // Temporary
+        for x in 0..9 {
+            for y in 0..9 {
+                let pos = XOPosition::new(x, y);
+                if let Some(player) = self.get_cell(&pos) {
+                    reflected.set_cell(&pos.reflect_vertical(), player);
+                }
+            }
+        }
+        reflected.last_move = self.last_move.map(|p| p.reflect_vertical());
+        reflected
+    }
+
     pub fn augmented(&self) -> Vec<Self> {
         let mut augmented = vec![self.clone()];
         
+        // add 3 rotations
         for r in 1..4 {
             augmented.push(augmented[r-1].rotated_90());
         }
+        // and their mirrors
+        augmented.push(augmented[0].reflected_vertical());
+        for r in 5..8 {
+            augmented.push(augmented[r-1].rotated_90());
+        }
 
+        // 8 boards
         augmented
     }
 }

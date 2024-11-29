@@ -92,10 +92,10 @@ impl Game<81> for XOGame {
 
     fn augmented_with_raw_policy(&self, raw_policy: &RawPolicy<81>) -> (Vec<Self>, Vec<RawPolicy<81>>) {
         let aug_boards = self.board.augmented();
-        let mut aug_games = vec![self.clone()];
+        let mut aug_games = Vec::new();
         let aug_policies = Self::augment_raw_policy(raw_policy);
-        for r in 1..4 {
-            aug_games.push(Self { board: aug_boards[r], status: self.status.clone() })
+        for board in aug_boards {
+            aug_games.push(Self { board, status: self.status.clone() })
         }
 
         (aug_games, aug_policies)
@@ -106,6 +106,10 @@ impl XOGame {
     fn augment_raw_policy(raw_policy: &RawPolicy<81>) -> Vec<RawPolicy<81>>{
         let mut aug_policies = vec![raw_policy.clone()];
         for r in 1..4 {
+            aug_policies.push(Self::rotate_raw_policy_90(&aug_policies[r-1]));
+        }
+        aug_policies.push(Self::reflect_vertical_raw_policy(&aug_policies[0]));
+        for r in 5..8 {
             aug_policies.push(Self::rotate_raw_policy_90(&aug_policies[r-1]));
         }
         aug_policies
@@ -119,6 +123,16 @@ impl XOGame {
             }
         }
         RawPolicy::new(rot_policy)
+    }
+
+    fn reflect_vertical_raw_policy(raw_policy: &RawPolicy<81>) -> RawPolicy<81> {
+        let mut ref_policy = [0.0f32; 81];
+        for x in 0..9 {
+            for y in 0..9 {
+                ref_policy[x + 9 * y] = raw_policy[(8-x) + 9 * (y)]
+            }
+        }
+        RawPolicy::new(ref_policy)
     }
 }
 

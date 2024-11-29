@@ -67,7 +67,7 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
             total_epoch_loss[0] += policy_loss.double_value(&[]) as f64;
             total_epoch_loss[1] += value_loss.double_value(&[]) as f64;
 
-            let loss = value_loss + policy_loss;
+            let loss = value_loss * policy_loss;
 
             opt.backward_step(&loss);
         }

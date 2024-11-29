@@ -4,7 +4,7 @@ use std::sync::PoisonError;
 use crate::game::XOGame;
 use rand::prelude::*;
 use sigmazero::game::Game;
-use sigmazero::policy::{Agent, RawPolicy, NNAgent};
+use sigmazero::policy::{self, Agent, NNAgent, RawPolicy};
 use tch::{nn, Tensor};
 
 pub struct RandomAgent<R: Rng> {
@@ -78,6 +78,10 @@ impl Agent<XOGame, 81> for XONNAgent {
         let value = f32::try_from(value_logits.softmax(-1, None)).expect("Value cast into f32 failed!");
         assert_eq!(policy.len(), 81);
         let policy_arr: [f32; 81] = policy.try_into().expect("Policy conversion from vec to array failed!");
+
+        // debugging
+        let policy_arr = [1.0; 81];
+
         (RawPolicy::new(policy_arr), value)
     }
 }
