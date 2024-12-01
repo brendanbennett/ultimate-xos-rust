@@ -89,5 +89,5 @@ pub trait Agent<G: Game<N>, const N: usize> {
 
 pub trait NNAgent<G: Game<N>, const N:usize>: Agent<G, N> {
     fn new(vs: &nn::VarStore) -> Self;
-    fn forward(&self, xs: &Tensor) -> (Tensor, Tensor);
+    fn forward(&self, xs: &Tensor, train: bool) -> (Tensor, Tensor);
 }

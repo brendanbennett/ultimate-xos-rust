@@ -61,7 +61,7 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
             let mut pv_split = policy_values.split_with_sizes(&[81, 1], -1);
             let value_target = pv_split.pop().unwrap();
             let policy_target = pv_split.pop().unwrap();
-            let (policy_est, value_est) = nn_agent.forward(&features);
+            let (policy_est, value_est) = nn_agent.forward(&features, true);
 
             let value_loss = value_est.mse_loss(&value_target, tch::Reduction::Mean);
             // KL-divergence for prob distributions
@@ -90,7 +90,7 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
             let mut pv_split = policy_values.split_with_sizes(&[81, 1], -1);
             let value_target = pv_split.pop().unwrap();
             let policy_target = pv_split.pop().unwrap();
-            let (policy_est, value_est) = tch::no_grad(|| nn_agent.forward(&features));
+            let (policy_est, value_est) = tch::no_grad(|| nn_agent.forward(&features, false));
 
             let value_loss = value_est.mse_loss(&value_target, tch::Reduction::Mean);
             // KL-divergence for prob distributions
