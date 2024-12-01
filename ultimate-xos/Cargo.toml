@@ -10,4 +10,4 @@ indicatif = "0.17.9"
 itertools = "0.13.0"
 rand = { version = "0.8.5", features = ["small_rng"] }
 sigmazero = { version = "0.1.0", path = "../sigmazero" }
-tch = "0.18.0"
+tch = { version = "0.18.0" }

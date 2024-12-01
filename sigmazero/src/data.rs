@@ -85,6 +85,7 @@ impl<G: Game<N>, const N: usize> Default for ReplayBuffer<G, N> {
 pub struct ReplayBufferTensorData {
     pub features: tch::Tensor,
     pub policy_value: tch::Tensor,
+    device: tch::Device,
 }
 
 impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensorData {
@@ -113,6 +114,7 @@ impl<G: Game<N>, const N: usize> From<ReplayBuffer<G, N>> for ReplayBufferTensor
             )
             .to_dtype(tch::Kind::Float, false, false),
             policy_value: tch::Tensor::cat(&[policies, values], 1),
+            device: Device::Cpu,
         }
     }
 }
@@ -121,7 +123,7 @@ impl ReplayBufferTensorData {
     pub fn random_split(&self, fraction: f32) -> (Self, Self) {
         let n = self.features.size()[0];
         let left_split_length = (n as f32 * fraction).ceil() as i64;
-        let index = Tensor::randperm(n, (Kind::Int64, Device::Cpu));
+        let index = Tensor::randperm(n, (Kind::Int64, self.device));
         let mut features = self.features.detach_copy();
         let mut policy_value = self.policy_value.detach_copy();
         features = features.index_select(0, &index);
@@ -130,10 +132,12 @@ impl ReplayBufferTensorData {
             Self {
                 features: features.i(..left_split_length),
                 policy_value: policy_value.i(..left_split_length),
+                device: self.device,
             },
             Self {
                 features: features.i(left_split_length..),
                 policy_value: policy_value.i(left_split_length..),
+                device: self.device,
             },
         )
     }
@@ -148,23 +152,26 @@ impl ReplayBufferTensorData {
         )
     }
 
-    pub fn load_from_file(path: &Path) -> Result<Self, TchError> {
+    pub fn load_from_file(path: &Path, device: tch::Device) -> Result<Self, TchError> {
         let tensors = Tensor::load_multi(path)?;
         let features = tensors
             .iter()
             .find(|(name, _)| name == "features")
             .expect(&format!("`features` tensor not found in {:?}", path))
             .1
+            .to_device(device)
             .shallow_clone();
         let policy_value = tensors
             .iter()
             .find(|(name, _)| name == "policy_value")
             .expect(&format!("`policy_value` tensor not found in {:?}", path))
             .1
+            .to_device(device)
             .shallow_clone();
         Ok(Self {
             features,
             policy_value,
+            device,
         })
     }
 
@@ -175,5 +182,10 @@ impl ReplayBufferTensorData {
     pub fn to_device(&mut self, device: tch::Device) {
         self.features = self.features.to(device);
         self.policy_value = self.policy_value.to(device);
+        self.device = device;
+    }
+
+    pub fn device(&self) -> tch::Device {
+        self.device
     }
 }

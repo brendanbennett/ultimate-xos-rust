@@ -18,6 +18,10 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
 ) {
     // Start training NN
     let mut nn_agent = A::new(&vs);
+    let device= vs.device();
+    if device != replay_data.device() {
+        panic!("Agent device ({:?}) and replay device ({:?}) mismatch.", device, replay_data.device());
+    }
     let mut opt = nn::Adam::default()
         .build(&vs, 1e-3)
         .expect("Optimiser initialisation failed!");
@@ -51,6 +55,7 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
             &train_data.policy_value,
             batch_size as i64,
         );
+        train_data_iterator.to_device(device);
         train_data_iterator.shuffle();
         for (features, policy_values) in train_data_iterator {
             let mut pv_split = policy_values.split_with_sizes(&[81, 1], -1);
@@ -78,6 +83,7 @@ pub fn train_on_replay<A: NNAgent<G, N>, G: Game<N>, const N: usize>(
             &test_data.policy_value,
             batch_size as i64,
         );
+        test_data_iterator.to_device(device);
         test_data_iterator.return_smaller_last_batch();
         test_data_iterator.shuffle();
         for (features, policy_values) in test_data_iterator {
